@@ -1,0 +1,86 @@
+/* ============================================
+   BALL BRAWL — menu.css
+   Menu screen specific styles
+   ============================================ */
+
+#screen-menu {
+  background: var(--col-bg);
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ─── Particle Canvas Behind ─── */
+.menu-bg {
+  position: absolute; inset: 0; z-index: 0;
+}
+#menu-particles { width: 100%; height: 100%; }
+
+/* ─── Menu Layout ─── */
+.menu-content {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column;
+  align-items: flex-start;
+  padding: clamp(40px, 8vh, 80px) clamp(32px, 8vw, 120px);
+  width: 100%; max-width: 560px;
+  gap: 36px;
+}
+
+/* ─── Title Block ─── */
+.title-block {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.title-eyebrow {
+  font-size: .75rem;
+  letter-spacing: .25em;
+  color: var(--col-mid);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.game-title {
+  font-family: var(--font-display);
+  font-size: clamp(5rem, 14vw, 9rem);
+  line-height: .9;
+  letter-spacing: .04em;
+  color: var(--col-white);
+}
+.game-title em {
+  font-style: normal;
+  -webkit-text-stroke: 2px var(--col-p1);
+  color: transparent;
+  filter: drop-shadow(0 0 20px var(--col-p1));
+}
+.subtitle {
+  margin-top: 10px;
+  font-size: .95rem;
+  color: var(--col-mid);
+  letter-spacing: .04em;
+}
+
+/* ─── Main Menu Buttons ─── */
+.main-menu {
+  display: flex; flex-direction: column; gap: 10px;
+  width: 100%;
+}
+
+/* ─── Footer ─── */
+.menu-footer {
+  font-size: .75rem;
+  color: rgba(112,112,160,.4);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+/* ─── Title entrance animation ─── */
+.game-title { animation: slide-in .6s cubic-bezier(.22,1,.36,1) both; }
+.subtitle { animation: slide-in .7s .05s cubic-bezier(.22,1,.36,1) both; }
+.main-menu { animation: slide-in .7s .1s cubic-bezier(.22,1,.36,1) both; }
+@keyframes slide-in {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Decorative arena preview (right side) ─── */
+@media (min-width: 900px) {
+  #screen-menu { justify-content: flex-start; }
+  .menu-content { max-width: 560px; }
+}
