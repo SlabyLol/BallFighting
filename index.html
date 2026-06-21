@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BALL BRAWL — Arena Fighter</title>
+  <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/menu.css" />
+</head>
+<body>
+
+  <!-- MENU SCREEN -->
+  <div id="screen-menu" class="screen active">
+    <div class="menu-bg">
+      <canvas id="menu-particles"></canvas>
+    </div>
+    <div class="menu-content">
+      <div class="title-block">
+        <span class="title-eyebrow">ARENA FIGHTER</span>
+        <h1 class="game-title">BALL<br/><em>BRAWL</em></h1>
+        <p class="subtitle">Two balls. One arena. No mercy.</p>
+      </div>
+      <nav class="main-menu">
+        <button class="menu-btn primary" onclick="App.startGame('pvp')">
+          <span class="btn-icon">⚔</span>
+          <span class="btn-label">Player vs Player</span>
+          <span class="btn-sub">Local 2-player battle</span>
+        </button>
+        <button class="menu-btn" onclick="App.startGame('pve')">
+          <span class="btn-icon">🤖</span>
+          <span class="btn-label">Player vs CPU</span>
+          <span class="btn-sub">Fight the machine</span>
+        </button>
+        <button class="menu-btn" onclick="App.showScreen('screen-settings')">
+          <span class="btn-icon">⚙</span>
+          <span class="btn-label">Settings</span>
+          <span class="btn-sub">Controls & options</span>
+        </button>
+        <button class="menu-btn" onclick="App.showScreen('screen-howto')">
+          <span class="btn-icon">?</span>
+          <span class="btn-label">How to Play</span>
+          <span class="btn-sub">Controls & rules</span>
+        </button>
+      </nav>
+      <footer class="menu-footer">
+        <span>Built for GitHub Pages</span>
+      </footer>
+    </div>
+  </div>
+
+  <!-- GAME SCREEN -->
+  <div id="screen-game" class="screen">
+    <div id="hud">
+      <div class="player-hud" id="hud-p1">
+        <div class="hud-name">P1</div>
+        <div class="health-bar-wrap">
+          <div class="health-bar" id="hp-bar-p1"></div>
+        </div>
+        <div class="hud-hp-text" id="hp-text-p1">100</div>
+      </div>
+      <div class="hud-center">
+        <div class="round-display" id="round-display">ROUND 1</div>
+        <div class="timer-display" id="timer-display">60</div>
+      </div>
+      <div class="player-hud right" id="hud-p2">
+        <div class="hud-name">P2</div>
+        <div class="health-bar-wrap">
+          <div class="health-bar" id="hp-bar-p2"></div>
+        </div>
+        <div class="hud-hp-text" id="hp-text-p2">100</div>
+      </div>
+    </div>
+    <canvas id="game-canvas"></canvas>
+    <div id="round-banner" class="round-banner hidden">
+      <div class="banner-text" id="banner-text">FIGHT!</div>
+    </div>
+    <button class="pause-btn" onclick="App.togglePause()" id="pause-btn">⏸</button>
+  </div>
+
+  <!-- PAUSE SCREEN -->
+  <div id="screen-pause" class="screen overlay">
+    <div class="overlay-panel">
+      <h2>PAUSED</h2>
+      <button class="menu-btn" onclick="App.togglePause()">Resume</button>
+      <button class="menu-btn" onclick="App.goMenu()">Main Menu</button>
+    </div>
+  </div>
+
+  <!-- ROUND END SCREEN -->
+  <div id="screen-roundend" class="screen overlay hidden">
+    <div class="overlay-panel large">
+      <div class="round-result" id="round-result-text">Player 1 Wins!</div>
+      <div class="score-display" id="score-display"></div>
+      <button class="menu-btn primary" id="next-round-btn" onclick="App.nextRound()">Next Round</button>
+      <button class="menu-btn" onclick="App.goMenu()">Quit</button>
+    </div>
+  </div>
+
+  <!-- GAME OVER SCREEN -->
+  <div id="screen-gameover" class="screen overlay hidden">
+    <div class="overlay-panel large">
+      <div class="victory-title" id="victory-text">PLAYER 1 WINS!</div>
+      <div class="final-score" id="final-score"></div>
+      <div class="mvp-stats" id="mvp-stats"></div>
+      <button class="menu-btn primary" onclick="App.startGame(App.lastMode)">Play Again</button>
+      <button class="menu-btn" onclick="App.goMenu()">Main Menu</button>
+    </div>
+  </div>
+
+  <!-- HOW TO PLAY -->
+  <div id="screen-howto" class="screen overlay">
+    <div class="overlay-panel large">
+      <h2>HOW TO PLAY</h2>
+      <div class="controls-grid">
+        <div class="controls-col">
+          <h3 class="player-tag p1">Player 1</h3>
+          <table class="controls-table">
+            <tr><td>Move Left</td><td><kbd>A</kbd></td></tr>
+            <tr><td>Move Right</td><td><kbd>D</kbd></td></tr>
+            <tr><td>Jump</td><td><kbd>W</kbd></td></tr>
+            <tr><td>Dash</td><td><kbd>Shift</kbd></td></tr>
+            <tr><td>Attack</td><td><kbd>F</kbd></td></tr>
+            <tr><td>Heavy</td><td><kbd>G</kbd></td></tr>
+            <tr><td>Special</td><td><kbd>R</kbd></td></tr>
+          </table>
+        </div>
+        <div class="controls-col">
+          <h3 class="player-tag p2">Player 2</h3>
+          <table class="controls-table">
+            <tr><td>Move Left</td><td><kbd>←</kbd></td></tr>
+            <tr><td>Move Right</td><td><kbd>→</kbd></td></tr>
+            <tr><td>Jump</td><td><kbd>↑</kbd></td></tr>
+            <tr><td>Dash</td><td><kbd>Ctrl</kbd></td></tr>
+            <tr><td>Attack</td><td><kbd>L</kbd></td></tr>
+            <tr><td>Heavy</td><td><kbd>;</kbd></td></tr>
+            <tr><td>Special</td><td><kbd>O</kbd></td></tr>
+          </table>
+        </div>
+      </div>
+      <div class="rules-block">
+        <h3>Rules</h3>
+        <ul>
+          <li>Deplete your opponent's HP to win the round.</li>
+          <li>First to win 2 rounds claims victory.</li>
+          <li>Timer runs out? The fighter with more HP wins.</li>
+          <li>Special attacks charge over time — use them wisely.</li>
+        </ul>
+      </div>
+      <button class="menu-btn" onclick="App.showScreen('screen-menu')">Back</button>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div id="screen-settings" class="screen overlay">
+    <div class="overlay-panel large">
+      <h2>SETTINGS</h2>
+      <div class="settings-list">
+        <div class="setting-row">
+          <label>Round Time</label>
+          <div class="setting-options" id="setting-time">
+            <button class="opt-btn" data-val="30">30s</button>
+            <button class="opt-btn active" data-val="60">60s</button>
+            <button class="opt-btn" data-val="99">99s</button>
+          </div>
+        </div>
+        <div class="setting-row">
+          <label>Rounds to Win</label>
+          <div class="setting-options" id="setting-rounds">
+            <button class="opt-btn" data-val="1">1</button>
+            <button class="opt-btn active" data-val="2">2</button>
+            <button class="opt-btn" data-val="3">3</button>
+          </div>
+        </div>
+        <div class="setting-row">
+          <label>Ball Size</label>
+          <div class="setting-options" id="setting-size">
+            <button class="opt-btn" data-val="small">Small</button>
+            <button class="opt-btn active" data-val="normal">Normal</button>
+            <button class="opt-btn" data-val="large">Large</button>
+          </div>
+        </div>
+        <div class="setting-row">
+          <label>Effects</label>
+          <div class="setting-options" id="setting-effects">
+            <button class="opt-btn active" data-val="on">On</button>
+            <button class="opt-btn" data-val="off">Off</button>
+          </div>
+        </div>
+      </div>
+      <button class="menu-btn primary" onclick="App.saveSettings()">Save & Back</button>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/settings.js"></script>
+  <script src="js/particles.js"></script>
+  <script src="js/physics.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/ball.js"></script>
+  <script src="js/arena.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
