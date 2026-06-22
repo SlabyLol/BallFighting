@@ -647,6 +647,7 @@ const ITEM_TYPES=[
   {id:'arrow',    emoji:'🏹',col:'#c0ff60',label:'ARROW!'},
   {id:'bullet',   emoji:'-X',col:'#000000',label:'BAMBAM!'},
   {id:'heart2',   emoji:'💖',col:'#ff6b8a',label:'HEART2 +67!'},
+  
 ];
 class Item{
   constructor(x,y,type,floorY){
@@ -1014,6 +1015,10 @@ function applyItem(type,picker,other,now){
     case'bullet':
       GS.projectiles.push(new Projectile(picker.x,picker.y,picker.facing*20,picker,type));
       gEmit(picker.x,picker.y,'#c0ff60',8,5,5);break;
+  }
+    case'lag':
+      GS.projectiles.push(new BulPro(picker.x,picker.y,picker.facin*20,picker,type));
+      gEmit(picker.x,picker.y,'#ff6600',8,5,5);break;
   }
 }
 
