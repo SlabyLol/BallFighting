@@ -375,6 +375,7 @@ body.pve .act-cluster{grid-template-columns:repeat(2,70px);grid-template-rows:re
     <div class="rules"><h3>Items (SSB-style)</h3><ul>
       <li>⚡ <b>Lightning</b> — Instant 30 dmg + stun to opponent</li>
       <li>❤️ <b>Heart</b> — Restore 30 HP (max 100)</li>
+      <li>💖 <b>HeartV2</b> - Restore 67 HP (max 100)</li>
       <li>💥 <b>Bomb</b> — Explodes: massive knockback + 40 dmg</li>
       <li>⭐ <b>Star</b> — 5 seconds of invincibility</li>
       <li>🔥 <b>Flame</b> — Speed & attack buff for 6 seconds</li>
@@ -643,6 +644,7 @@ const ITEM_TYPES=[
   {id:'flame',    emoji:'🔥',col:'#ff6600',label:'SPEED UP!'},
   {id:'ice',      emoji:'🧊',col:'#66ddff',label:'FREEZE!'},
   {id:'arrow',    emoji:'🏹',col:'#c0ff60',label:'ARROW!'},
+  {id:'heart2',   emoji:'💖',col:'#ff6b8a',label:'HEART2 +67!'},
 ];
 class Item{
   constructor(x,y,type,floorY){
@@ -986,6 +988,9 @@ function applyItem(type,picker,other,now){
     case'heart':
       picker.hp=Math.min(picker.maxHp,picker.hp+30);
       gEmit(picker.x,picker.y,'#ff6b8a',16,6,6);spawnFloater('+30 HP',picker.x-20,picker.y-60,'#ff6b8a',false);break;
+    case'heart2':
+      picker.hp=Math.min(picker.maxHp,picker.hp+67);
+      gEmit(picker.x,picker.y,'#ff6b8a',16,6,6);spawnFloater('+67 HP',picker.x-20,picker.y-60,'#ff6b8a',false);break;
     case'bomb':
       const bDmg=40,bF=16;
       [b=>b!==picker].forEach(()=>{});// just use other
