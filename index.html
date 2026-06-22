@@ -678,6 +678,13 @@ class Projectile{
     this.alive=true;this.r=8;this.age=0;
     this.target=null;// homing
   }
+// Projectile (bullet)
+class BulPro{
+  constructor(x,y,vx,owner,type){
+    this.x=x;this.y=y;this.vx=vx;this.vy=0;this.owner=owner;this.type=type;
+    this.alive=true;this.r=10;this.age=0;
+    this.target=null;// homing
+  }
   update(b1,b2){
     this.age++;
     // Homing towards enemy
@@ -1012,7 +1019,7 @@ function applyItem(type,picker,other,now){
       GS.projectiles.push(new Projectile(picker.x,picker.y,picker.facing*8,picker,type));
       gEmit(picker.x,picker.y,'#c0ff60',8,5,5);break;
     case'bullet':
-      GS.projectiles.push(new Projectile(picker.x,picker.y,picker.facing*20,picker,type));
+      GS.projectiles.push(new BulPro(picker.x,picker.y,picker.facing*20,picker,type));
       gEmit(picker.x,picker.y,'#c0ff60',8,5,5);break;
   }
 }
