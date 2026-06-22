@@ -1012,7 +1012,7 @@ function applyItem(type,picker,other,now){
       GS.projectiles.push(new Projectile(picker.x,picker.y,picker.facing*8,picker,type));
       gEmit(picker.x,picker.y,'#c0ff60',8,5,5);break;
     case'bullet':
-      GS.projectiles.push(new BulPro(picker.x,picker.y,picker.facing*20,picker,type));
+      GS.projectiles.push(new Projectile(picker.x,picker.y,picker.facing*20,picker,type));
       gEmit(picker.x,picker.y,'#c0ff60',8,5,5);break;
   }
 }
