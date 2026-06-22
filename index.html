@@ -678,13 +678,6 @@ class Projectile{
     this.alive=true;this.r=8;this.age=0;
     this.target=null;// homing
   }
-// Projectile (bullet)
-class BulPro{
-  constructor(x,y,vx,owner,type){
-    this.x=x;this.y=y;this.vx=vx;this.vy=0;this.owner=owner;this.type=type;
-    this.alive=true;this.r=10;this.age=0;
-    this.target=null;// homing
-  }
   update(b1,b2){
     this.age++;
     // Homing towards enemy
