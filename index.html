@@ -537,7 +537,8 @@ function openCharSelect(mode){
   buildSwatches('swatches1',0);buildSwatches('swatches2',1);
   // Sync difficulty buttons
   $('diff-opts').querySelectorAll('.diff-btn').forEach(b=>b.classList.toggle('on',b.dataset.d===CPU_DIFFICULTY));
-  stopMenu();showScreen('s-char');
+  stopMenu();
+  showScreen('s-char');
 }
 
 // ── Game particles ───────────────────────────────────────────
