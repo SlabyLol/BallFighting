@@ -8,6 +8,14 @@
     let mousePos = { x: 0, y: 0 };
     let lastKey = 'None';
     let performanceStats = { fps: 0, lastTime: performance.now(), frames: 0 };
+    let scriptCounter = 0;
+
+    // Emoji-Mapping-Tabelle für typische Item-Namen (wird automatisch als Fallback genutzt)
+    const ITEM_EMOJIS = {
+        'coin': '🪙', 'gold': '🥇', 'gem': '💎', 'diamond': '💎', 'heart': '❤️', 'life': '💖',
+        'sword': '⚔️', 'shield': '🛡️', 'potion': '🧪', 'apple': '🍎', 'star': '⭐', 'key': '🔑',
+        'bomb': '💣', 'box': '📦', 'chest': '🧰', 'speed': '⚡', 'fire': '🔥', 'water': '💧'
+    };
 
     // 1. KONSOLEN & FEHLER HOOKS
     const consoleTypes = ['log', 'error', 'warn', 'info', 'debug'];
@@ -35,7 +43,7 @@
     });
     let inputBuffer = "";
 
-    // FPS Counter Loop
+    // FPS Zähler
     function updateFPS() {
         performanceStats.frames++;
         const now = performance.now();
@@ -54,7 +62,21 @@
         if (isPanelOpen && currentTab === 'console' && !isMinimized) updateConsoleView();
     }
 
-    // 2. ENGINE SPAWN LOGIK
+    // 2. SPAWN ENGINE LOGIK
+    function getItemEmoji(typeName) {
+        const lower = typeName.toLowerCase();
+        // 1. Prüfen ob der Name selbst bereits ein Emoji enthält
+        const emojiMatch = typeName.match(/[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff]/g);
+        if (emojiMatch) return ""; // Kein extra Emoji nötig, Name hat schon eins
+        
+        // 2. In unserer Liste nach Schlüsselwörtern suchen
+        for (let key in ITEM_EMOJIS) {
+            if (lower.includes(key)) return ITEM_EMOJIS[key] + " ";
+        }
+        // Fallback Standard-Emoji
+        return "📦 ";
+    }
+
     function spawnSingleItem(type) {
         if (typeof ITEM_TYPES !== 'undefined' && typeof GS !== 'undefined' && typeof Item !== 'undefined') {
             const xPos = (typeof rnd === 'function' && typeof W !== 'undefined') ? rnd(W * .1, W * .9) : window.innerWidth / 2;
@@ -78,7 +100,7 @@
     // 3. UI INITIALISIERUNG
     const panel = document.createElement('div');
     panel.style.cssText = `
-        position: fixed; bottom: 20px; right: 20px; width: 750px; height: 550px;
+        position: fixed; bottom: 20px; right: 20px; width: 800px; height: 600px;
         background: #111; color: #e0e0e0; font-family: 'Consolas', monospace; font-size: 12px;
         box-shadow: 0 25px 60px rgba(0,0,0,0.9); border-radius: 8px; border: 1px solid #00ffaa;
         display: none; flex-direction: column; z-index: 999999; overflow: hidden;
@@ -88,11 +110,11 @@
     // Header
     const header = document.createElement('div');
     header.style.cssText = `background:#1a1a1a; padding:12px; font-weight:bold; border-bottom:1px solid #252525; display:flex; justify-content:space-between; align-items:center; color:#00ffaa; user-select:none;`;
-    header.innerHTML = `<span>DarkFox Co. Overlord Engine v6.0</span>`;
+    header.innerHTML = `<span>DarkFox Co. Overlord Engine v7.0</span>`;
     
     const controls = document.createElement('div');
-    const minBtn = document.createElement('button'); minBtn.innerText = '_'; minBtn.style.cssText = 'background:transparent; border:none; color:#00ffaa; cursor:pointer; font-size:16px; margin-right:10px;'; minBtn.onclick = toggleMinimize;
-    const closeBtn = document.createElement('button'); closeBtn.innerText = '✕'; closeBtn.style.cssText = 'background:transparent; border:none; color:#ff5555; cursor:pointer; font-size:14px;'; closeBtn.onclick = toggleDebugPanel;
+    const minBtn = document.createElement('button'); minBtn.innerText = '_'; minBtn.style.cssText = 'background:transparent; border:none; color:#00ffaa; cursor:pointer; font-size:16px; margin-right:10px; font-weight:bold;'; minBtn.onclick = toggleMinimize;
+    const closeBtn = document.createElement('button'); closeBtn.innerText = '✕'; closeBtn.style.cssText = 'background:transparent; border:none; color:#ff5555; cursor:pointer; font-size:14px; font-weight:bold;'; closeBtn.onclick = toggleDebugPanel;
     controls.appendChild(minBtn); controls.appendChild(closeBtn); header.appendChild(controls); panel.appendChild(header);
 
     // Main Layout (Sidebar + Content)
@@ -101,21 +123,21 @@
     
     // Sidebar Menü
     const sidebar = document.createElement('div');
-    sidebar.id = 'dev-sidebar';
-    sidebar.style.cssText = 'width: 160px; background: #161616; border-right: 1px solid #252525; display: flex; flex-direction: column;';
+    sidebar.style.cssText = 'width: 180px; background: #161616; border-right: 1px solid #252525; display: flex; flex-direction: column;';
     
     const tabs = {
         console: '🖥️ Terminal',
         items: '📦 Item Engine',
+        jsexecute: '🚀 JSexecute Loader',
         actions: '⚡ Quick Cheats',
-        dom: '🔍 DOM Tree',
+        dom: '🔍 DOM Explorer',
         stats: '📊 Performance'
     };
 
     Object.keys(tabs).forEach(tabId => {
         const btn = document.createElement('button');
         btn.innerText = tabs[tabId];
-        btn.style.cssText = 'padding:12px 10px; background:transparent; border:none; color:#888; text-align:left; cursor:pointer; font-family:inherit; font-size:11px; border-left: 3px solid transparent;';
+        btn.style.cssText = 'padding:12px 10px; background:transparent; border:none; color:#888; text-align:left; cursor:pointer; font-family:inherit; font-size:11px; border-left: 3px solid transparent; transition: all 0.2s;';
         btn.onclick = () => switchTab(tabId);
         sidebar.appendChild(btn);
         tabs[tabId] = btn;
@@ -135,7 +157,7 @@
     cliContainer.innerHTML = '<span style="color:#00ffaa; padding:4px 5px; font-weight:bold;">❯</span>';
     const cmdInput = document.createElement('input');
     cmdInput.type = 'text';
-    cmdInput.placeholder = 'Type command (e.g. spawnRND; wireframe; help;) ...';
+    cmdInput.placeholder = 'Type command (e.g. spawnRND; help; clear;) ...';
     cmdInput.style.cssText = 'flex-grow:1; background:transparent; border:none; color:#fff; font-family:inherit; font-size:12px; padding:4px; outline:none;';
     cliContainer.appendChild(cmdInput);
     panel.appendChild(cliContainer);
@@ -150,7 +172,7 @@
             mainLayout.style.display = 'none'; cliContainer.style.display = 'none';
             minBtn.innerText = '⬜';
         } else {
-            panel.style.height = '550px'; panel.style.width = '750px';
+            panel.style.height = '600px'; panel.style.width = '800px';
             mainLayout.style.display = 'flex'; minBtn.innerText = '_';
             switchTab(currentTab);
         }
@@ -170,6 +192,7 @@
 
         if (tabId === 'console') updateConsoleView();
         else if (tabId === 'items') renderItemsView();
+        else if (tabId === 'jsexecute') renderJsExecuteView();
         else if (tabId === 'actions') renderCheatsView();
         else if (tabId === 'dom') renderDomView();
         else if (tabId === 'stats') renderStatsView();
@@ -179,7 +202,7 @@
         if (currentTab !== 'console') return;
         contentContainer.innerHTML = '';
         if (devLogs.length === 0) {
-            contentContainer.innerHTML = '<span style="color:#555;">// Console ready. Type help; below for unique macro triggers.</span>';
+            contentContainer.innerHTML = '<span style="color:#555;">// Terminal ready. Type help; below for macro commands.</span>';
             return;
         }
         devLogs.forEach(log => {
@@ -198,11 +221,12 @@
         contentContainer.scrollTop = contentContainer.scrollHeight;
     }
 
+    // TAB: ITEM ENGINE (MIT DYNAMISCHEN EMOJI-BUTTONS)
     function renderItemsView() {
         contentContainer.innerHTML = '<h3 style="margin:0 0 15px 0; color:#00ffaa;">Item Matrix Spawner</h3>';
         
         const rndBtn = document.createElement('button');
-        rndBtn.innerText = '🎲 SPAWN RANDOM ITEM (spawnRND;)';
+        rndBtn.innerText = '🎲 Spawn Random Item (spawnRND;)';
         rndBtn.style.cssText = 'width:100%; background:#8a1a8a; border:1px solid #ff00ff; color:#fff; padding:12px; cursor:pointer; border-radius:4px; font-weight:bold; margin-bottom:15px; font-family:inherit;';
         rndBtn.onclick = spawnRandomItem;
         contentContainer.appendChild(rndBtn);
@@ -214,14 +238,93 @@
 
         const grid = document.createElement('div');
         grid.style.cssText = 'display:grid; grid-template-columns: 1fr 1fr; gap:8px;';
+        
         ITEM_TYPES.forEach(type => {
             const btn = document.createElement('button');
-            btn.innerText = `🎁 ${type}`;
-            btn.style.cssText = 'background:#222; border:1px solid #3c3c3c; color:#fff; padding:8px; cursor:pointer; border-radius:4px; text-align:left; font-family:inherit; font-size:11px;';
+            const emojiPrefix = getItemEmoji(type);
+            // Generiert das Format: Spawn [Emoji] [Name]
+            btn.innerText = `Spawn ${emojiPrefix}${type}`;
+            btn.style.cssText = 'background:#222; border:1px solid #3c3c3c; color:#fff; padding:10px; cursor:pointer; border-radius:4px; text-align:left; font-family:inherit; font-size:11px; transition: background 0.1s;';
+            btn.onmouseover = () => btn.style.background = '#333';
+            btn.onmouseout = () => btn.style.background = '#222';
             btn.onclick = () => spawnSingleItem(type);
             grid.appendChild(btn);
         });
         contentContainer.appendChild(grid);
+    }
+
+    // TAB: JSEXECUTE SCRIPT LOADER (NEU!)
+    function renderJsExecuteView() {
+        contentContainer.innerHTML = `
+            <h3 style="margin:0 0 5px 0; color:#00ffaa;">JSexecute Injection Suite</h3>
+            <p style="color:#888; font-size:11px; margin:0 0 15px 0;">Inject external scripts or mods live into the environment runtime.</p>
+        `;
+
+        const loaderBox = document.createElement('div');
+        loaderBox.style.cssText = 'background:#161616; padding:15px; border-radius:6px; border:1px solid #2d2d2d; display:flex; flex-direction:column; gap:10px;';
+
+        const label = document.createElement('label');
+        label.innerText = 'External Script URL:';
+        label.style.cssText = 'color:#fff; font-weight:bold; font-size:11px;';
+        
+        const urlInput = document.createElement('input');
+        urlInput.type = 'text';
+        urlInput.placeholder = 'https://example.com/mod-script.js';
+        urlInput.style.cssText = 'background:#111; border:1px solid #444; color:#fff; padding:8px; border-radius:4px; font-family:inherit; outline:none; font-size:11px;';
+
+        const injectBtn = document.createElement('button');
+        injectBtn.innerText = '🚀 Inject & Execute Script';
+        injectBtn.style.cssText = 'background:#005533; border:1px solid #00ffaa; color:#fff; padding:10px; font-weight:bold; border-radius:4px; cursor:pointer; font-family:inherit; transition: background 0.2s;';
+        
+        injectBtn.onclick = () => {
+            const url = urlInput.value.trim();
+            if(!url) { alert('Please enter a valid URL!'); return; }
+            
+            logToDebug('SYSTEM', `Attempting to load external script: ${url}`);
+            
+            const script = document.createElement('script');
+            script.src = url;
+            script.id = `js-injected-script-${scriptCounter++}`;
+            
+            script.onload = () => {
+                logToDebug('RESULT', `Script successfully injected and executed: ${url}`);
+                alert('Script loaded successfully!');
+            };
+            
+            script.onerror = (err) => {
+                logToDebug('ERROR', `Failed to inject script from source: ${url}`);
+                alert('Failed to load script. Check Dev console for details.');
+            };
+
+            document.head.appendChild(script);
+            urlInput.value = '';
+        };
+
+        loaderBox.appendChild(label);
+        loaderBox.appendChild(urlInput);
+        loaderBox.appendChild(injectBtn);
+        contentContainer.appendChild(loaderBox);
+
+        // Quick Presets inside Loader
+        contentContainer.innerHTML += '<h4 style="margin:20px 0 10px 0; color:#00ffaa;">Useful Script Presets</h4>';
+        const presets = [
+            { name: 'Inject jQuery Framework', url: 'https://code.jquery.com/jquery-3.7.1.min.js' },
+            { name: 'Inject FontAwesome Icons', url: 'https://kit.fontawesome.com/a076d05399.js' }
+        ];
+
+        presets.forEach(p => {
+            const row = document.createElement('div');
+            row.style.cssText = 'display:flex; justify-content:between; align-items:center; background:#222; padding:8px 12px; margin-bottom:5px; border-radius:4px; font-size:11px;';
+            row.innerHTML = `<span style="flex-grow:1; color:#fff;">${p.name}</span>`;
+            
+            const pBtn = document.createElement('button');
+            pBtn.innerText = 'Load';
+            pBtn.style.cssText = 'background:#444; border:none; color:#00ffaa; padding:4px 8px; border-radius:3px; cursor:pointer; font-family:inherit; font-size:10px;';
+            pBtn.onclick = () => { urlInput.value = p.url; };
+            
+            row.appendChild(pBtn);
+            contentContainer.appendChild(row);
+        });
     }
 
     function renderCheatsView() {
@@ -251,7 +354,7 @@
     function renderDomView() {
         contentContainer.innerHTML = '<h3 style="margin:0 0 15px 0; color:#00ffaa;">HTML Document Elements Tree</h3>';
         const pre = document.createElement('pre');
-        pre.style.cssText = 'background:#050505; color:#a5d6ff; padding:10px; border-radius:4px; font-size:11px; max-height:420px; overflow:auto; white-space:pre-wrap; margin:0;';
+        pre.style.cssText = 'background:#050505; color:#a5d6ff; padding:10px; border-radius:4px; font-size:11px; max-height:450px; overflow:auto; white-space:pre-wrap; margin:0;';
         pre.innerText = document.documentElement.outerHTML.slice(0, 30000);
         contentContainer.appendChild(pre);
     }
@@ -278,7 +381,7 @@
         contentContainer.appendChild(box);
     }
 
-    // 6. EXPANDED TERMINAL INTERPRETER (CLI MACROS)
+    // 6. TERMINAL INTERPRETER (CLI MACROS)
     cmdInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && cmdInput.value.trim() !== '') {
             const command = cmdInput.value.trim();
@@ -286,7 +389,6 @@
             commandHistory.push(command);
             historyIndex = commandHistory.length;
 
-            // Engine Macro Commands Abfangschleife
             const cmdLower = command.toLowerCase().replace(';', '');
 
             if (cmdLower === 'spawnrnd') {
@@ -305,7 +407,6 @@
                 document.designMode = document.designMode === 'on' ? 'off' : 'on';
                 logToDebug('SYSTEM', `DesignMode is now: ${document.designMode}`);
             } else {
-                // Wenn es kein Makro ist, als reines JS evaluieren
                 try {
                     const result = window.eval(command);
                     logToDebug('RESULT', result !== undefined ? JSON.stringify(result) : 'undefined');
