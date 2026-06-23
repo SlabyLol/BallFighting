@@ -54,15 +54,15 @@
         if (isPanelOpen && currentTab === 'console' && !isMinimized) updateConsoleView();
     }
 
-    // 2. DETEKTION & SPAWN LOGIK FÜR DEINE INTERNE STRUKTUR
-    function spawnSingleItem(typeId) {
+    // 2. DETEKTION & SPAWN LOGIK (ÜBERGIBT JETZT DAS GANZE OBJEKT)
+    function spawnSingleItem(itemObject) {
         if ((typeof ITEM_TYPES !== 'undefined' || window.ITEM_TYPES !== undefined) && typeof GS !== 'undefined' && typeof Item !== 'undefined') {
             const xPos = (typeof rnd === 'function' && typeof W !== 'undefined') ? rnd(W * .1, W * .9) : window.innerWidth / 2;
             const fyVal = typeof FY !== 'undefined' ? FY : 0;
             
-            // Reicht die ID an deine Engine weiter
-            GS.items.push(new Item(xPos, -30, typeId, fyVal));
-            logToDebug('SYSTEM', `Spawned item: ${typeId}`);
+            // FIX: Übergibt das komplette Objekt {id, emoji, col, label} anstatt nur den ID-String
+            GS.items.push(new Item(xPos, -30, itemObject, fyVal));
+            logToDebug('SYSTEM', `Spawned item object: ${itemObject.id || 'Unknown'}`);
         } else {
             logToDebug('ERROR', 'Game engine components missing in global window scope!');
         }
@@ -73,9 +73,7 @@
         if (activeTypes && activeTypes.length > 0) {
             const index = Math.floor(Math.random() * activeTypes.length);
             const targetItem = activeTypes[index];
-            // Erkennt ob Objekt oder String
-            const id = typeof targetItem === 'object' ? targetItem.id : targetItem;
-            spawnSingleItem(id);
+            spawnSingleItem(targetItem);
         } else {
             logToDebug('ERROR', 'No live ITEM_TYPES array found!');
         }
@@ -94,7 +92,7 @@
     // Header
     const header = document.createElement('div');
     header.style.cssText = `background:#1a1a1a; padding:12px; font-weight:bold; border-bottom:1px solid #252525; display:flex; justify-content:space-between; align-items:center; color:#00ffaa; user-select:none;`;
-    header.innerHTML = `<span>DarkFox Co. Overlord Engine v7.3</span>`;
+    header.innerHTML = `<span>DarkFox Co. Overlord Engine v7.4</span>`;
     
     const controls = document.createElement('div');
     const minBtn = document.createElement('button'); minBtn.innerText = '_'; minBtn.style.cssText = 'background:transparent; border:none; color:#00ffaa; cursor:pointer; font-size:16px; margin-right:10px; font-weight:bold;'; minBtn.onclick = toggleMinimize;
@@ -199,7 +197,6 @@
         contentContainer.scrollTop = contentContainer.scrollHeight;
     }
 
-    // EXAKTES PARSING DEINES OBJEKT-ARRAYS (id, emoji, label, col)
     function renderItemsView() {
         contentContainer.innerHTML = '<h3 style="margin:0 0 15px 0; color:#00ffaa;">Object Matrix Spawner</h3>';
         
@@ -220,21 +217,22 @@
         grid.style.cssText = 'display:grid; grid-template-columns: 1fr 1fr; gap:8px;';
         
         activeItemTypes.forEach(item => {
-            // Abfangen, falls es ein Objekt aus deiner index.html ist
-            const id = typeof item === 'object' ? item.id : item;
-            const emoji = typeof item === 'object' ? item.emoji : '📦';
-            const label = typeof item === 'object' ? (item.label || item.id) : item;
-            const borderCol = typeof item === 'object' ? (item.col || '#3c3c3c') : '#3c3c3c';
+            const isObj = typeof item === 'object' && item !== null;
+            const emoji = isObj ? item.emoji : '📦';
+            const label = isObj ? (item.label || item.id) : item;
+            const borderCol = isObj ? (item.col || '#3c3c3c') : '#3c3c3c';
 
             const btn = document.createElement('button');
             
-            // Gewünschtes Format: Spawn [Emoji] [Name/Label]
+            // Formatierung: Spawn [Emoji] [Label]
             btn.innerText = `Spawn ${emoji} ${label}`;
             btn.style.cssText = `background:#222; border:1px solid ${borderCol}; color:#fff; padding:10px; cursor:pointer; border-radius:4px; text-align:left; font-family:inherit; font-size:11px; transition: background 0.1s;`;
             
             btn.onmouseover = () => btn.style.background = '#333';
             btn.onmouseout = () => btn.style.background = '#222';
-            btn.onclick = () => spawnSingleItem(id);
+            
+            // Reicht das komplette Item-Objekt weiter!
+            btn.onclick = () => spawnSingleItem(item);
             grid.appendChild(btn);
         });
         contentContainer.appendChild(grid);
@@ -243,7 +241,7 @@
     function renderJsExecuteView() {
         contentContainer.innerHTML = `
             <h3 style="margin:0 0 5px 0; color:#00ffaa;">JSexecute Injection Suite</h3>
-            <p style="color:#888; font-size:11px; margin:0 0 15px 0;">Inject external scripts or mods live into the environment runtime.</p>
+            <p style="color:#888; font-size:11px; margin:0 0 15px 0;">Inject external scripts live into the environment runtime.</p>
         `;
         const loaderBox = document.createElement('div');
         loaderBox.style.cssText = 'background:#161616; padding:15px; border-radius:6px; border:1px solid #2d2d2d; display:flex; flex-direction:column; gap:10px;';
