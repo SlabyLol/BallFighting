@@ -534,7 +534,8 @@ function openCharSelect(mode){
   $('diff-row').style.display=isCPU?'flex':'none';
   $('name2').placeholder=isCPU?'CPU Name':'Player 2';
   $('name1').value=PROFILES[0].name;$('name2').value=PROFILES[1].name;
-  buildSwatches('swatches1',0);buildSwatches('swatches2',1);
+  buildSwatches('swatches1',0);
+  buildSwatches('swatches2',1);
   // Sync difficulty buttons
   $('diff-opts').querySelectorAll('.diff-btn').forEach(b=>b.classList.toggle('on',b.dataset.d===CPU_DIFFICULTY));
   stopMenu();
