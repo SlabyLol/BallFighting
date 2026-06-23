@@ -103,7 +103,7 @@
     function getSelectedPlayerEntity() {
         if (typeof GS === 'undefined') return null;
         
-        // Direkter Zugriff über den ausgewählten Key
+        // Direkter Zugriff über den ausgewählten Ke
         if (selectedPlayerKey.includes('[')) {
             // Für Array-Zugriffe wie players[0]
             try { return eval(`GS.${selectedPlayerKey}`); } catch(e) { return null; }
