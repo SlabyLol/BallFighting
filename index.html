@@ -530,15 +530,30 @@ function openCharSelect(mode){
   pendingMode=mode;
   const isCPU=mode==='pve';
   $('pcard2-label').textContent=isCPU?'CPU':'Player 2';
-  $('p2-card').style.opacity='1';$('p2-card').style.pointerEvents='all';
+  
+  // Wir setzen opacity auf 1, aber entfernen pointer-events für die Karte selbst, 
+  // damit sie die darunterliegenden Buttons nicht blockiert.
+  $('p2-card').style.opacity='1';
+  $('p2-card').style.pointerEvents='none'; 
+  
+  // Die Inputs und Swatches innerhalb der Karte müssen aber klickbar bleiben
+  $('p2-card').querySelectorAll('input, .swatch, .diff-btn').forEach(el => {
+      el.style.pointerEvents = 'all';
+  });
+
   $('diff-row').style.display=isCPU?'flex':'none';
   $('name2').placeholder=isCPU?'CPU Name':'Player 2';
-  $('name1').value=PROFILES[0].name;$('name2').value=PROFILES[1].name;
-  buildSwatches('swatches1',0);buildSwatches('swatches2',1);
-  // Sync difficulty buttons
+  $('name1').value=PROFILES[0].name;
+  $('name2').value=isCPU ? 'CPU' : PROFILES[1].name;
+  
+  buildSwatches('swatches1',0);
+  buildSwatches('swatches2',1);
+  
   $('diff-opts').querySelectorAll('.diff-btn').forEach(b=>b.classList.toggle('on',b.dataset.d===CPU_DIFFICULTY));
-  stopMenu();showScreen('s-char');
+  stopMenu();
+  showScreen('s-char');
 }
+
 
 // ── Game particles ───────────────────────────────────────────
 let GP=[];
@@ -1032,9 +1047,12 @@ function wire(){
   $('btn-char-back').onclick=()=>{showScreen('s-menu');startMenu();};
   $('btn-char-play').onclick=()=>{
     PROFILES[0].name=$('name1').value.trim()||'Player 1';
+    // Sicherstellen, dass im CPU-Modus auch wirklich "CPU" als Name genutzt wird, wenn nichts eingetragen ist
     PROFILES[1].name=$('name2').value.trim()||(pendingMode==='pve'?'CPU':'Player 2');
-    saveProfiles();startMatch(pendingMode);
+    saveProfiles();
+    startMatch(pendingMode);
   };
+  // ... restliche Event-Listener bleiben gleich ...
   $('btn-howto').onclick=()=>showOv('ov-howto');
   $('btn-settings').onclick=()=>{syncSettingsUI();showOv('ov-settings');};
   $('btn-resume').onclick=()=>togglePause();
