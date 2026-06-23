@@ -10,6 +10,11 @@
     let performanceStats = { fps: 0, lastTime: performance.now(), frames: 0 };
     let scriptCounter = 0;
 
+    // Cheat-Zustände
+    let freezeTimerActive = false;
+    let originalTimerTick = null;
+    let infSpecialLoop = null;
+
     // 1. KONSOLEN & FEHLER HOOKS
     const consoleTypes = ['log', 'error', 'warn', 'info', 'debug'];
     consoleTypes.forEach(type => {
@@ -54,13 +59,11 @@
         if (isPanelOpen && currentTab === 'console' && !isMinimized) updateConsoleView();
     }
 
-    // 2. DETEKTION & SPAWN LOGIK (ÜBERGIBT JETZT DAS GANZE OBJEKT)
+    // 2. DETEKTION & SPAWN LOGIK
     function spawnSingleItem(itemObject) {
         if ((typeof ITEM_TYPES !== 'undefined' || window.ITEM_TYPES !== undefined) && typeof GS !== 'undefined' && typeof Item !== 'undefined') {
             const xPos = (typeof rnd === 'function' && typeof W !== 'undefined') ? rnd(W * .1, W * .9) : window.innerWidth / 2;
             const fyVal = typeof FY !== 'undefined' ? FY : 0;
-            
-            // FIX: Übergibt das komplette Objekt {id, emoji, col, label} anstatt nur den ID-String
             GS.items.push(new Item(xPos, -30, itemObject, fyVal));
             logToDebug('SYSTEM', `Spawned item object: ${itemObject.id || 'Unknown'}`);
         } else {
@@ -79,6 +82,41 @@
         }
     }
 
+    // TIMER FREEZE ENGINE HOOK
+    function toggleTimerFreeze(checked) {
+        freezeTimerActive = checked;
+        if (freezeTimerActive) {
+            // Versuche den nativen Match-Timer-Interval abzufangen oder einzufrieren
+            if (typeof GS !== 'undefined' && GS.matchTimer !== undefined) {
+                // Erschaffe eine Schleife, die den Timer permanent oben hält
+                const savedTime = GS.matchTimer || 60;
+                originalTimerTick = setInterval(() => {
+                    if (typeof GS !== 'undefined' && freezeTimerActive) {
+                        GS.matchTimer = savedTime;
+                        const timerEl = document.getElementById('timer');
+                        if (timerEl) timerEl.innerText = Math.ceil(savedTime);
+                    }
+                }, 10);
+                logToDebug('SYSTEM', 'Match Timer Frozen via GS State Hook.');
+            } else {
+                logToDebug('WARN', 'GS.matchTimer active state not found. Fallback DOM Lock engaged.');
+                const timerEl = document.getElementById('timer');
+                if (timerEl) {
+                    const currentVal = timerEl.innerText;
+                    originalTimerTick = setInterval(() => {
+                        if (timerEl && freezeTimerActive) timerEl.innerText = currentVal;
+                    }, 10);
+                }
+            }
+        } else {
+            if (originalTimerTick) {
+                clearInterval(originalTimerTick);
+                originalTimerTick = null;
+            }
+            logToDebug('SYSTEM', 'Match Timer unfrozen.');
+        }
+    }
+
     // 3. UI INITIALISIERUNG
     const panel = document.createElement('div');
     panel.style.cssText = `
@@ -92,7 +130,7 @@
     // Header
     const header = document.createElement('div');
     header.style.cssText = `background:#1a1a1a; padding:12px; font-weight:bold; border-bottom:1px solid #252525; display:flex; justify-content:space-between; align-items:center; color:#00ffaa; user-select:none;`;
-    header.innerHTML = `<span>DarkFox Co. Overlord Engine v7.4</span>`;
+    header.innerHTML = `<span>DarkFox Co. Overlord Engine v7.5</span>`;
     
     const controls = document.createElement('div');
     const minBtn = document.createElement('button'); minBtn.innerText = '_'; minBtn.style.cssText = 'background:transparent; border:none; color:#00ffaa; cursor:pointer; font-size:16px; margin-right:10px; font-weight:bold;'; minBtn.onclick = toggleMinimize;
@@ -135,7 +173,7 @@
     cliContainer.innerHTML = '<span style="color:#00ffaa; padding:4px 5px; font-weight:bold;">❯</span>';
     const cmdInput = document.createElement('input');
     cmdInput.type = 'text';
-    cmdInput.placeholder = 'Type command (e.g. spawnRND; help; clear;) ...';
+    cmdInput.placeholder = 'Type command (e.g. spawnRND; freeze; help;) ...';
     cmdInput.style.cssText = 'flex-grow:1; background:transparent; border:none; color:#fff; font-family:inherit; font-size:12px; padding:4px; outline:none;';
     cliContainer.appendChild(cmdInput);
     panel.appendChild(cliContainer);
@@ -209,7 +247,7 @@
         const activeItemTypes = window.ITEM_TYPES || (typeof ITEM_TYPES !== 'undefined' ? ITEM_TYPES : null);
 
         if (!activeItemTypes) {
-            contentContainer.innerHTML += '<p style="color:#ff4444;">⚠️ ITEM_TYPES array was not found in global runtime scope.</p>';
+            contentContainer.innerHTML += '<p style="color:#ff4444;">⚠️ ITEM_TYPES-Array wurde zur Laufzeit nicht im globalen Scope gefunden.</p>';
             return;
         }
 
@@ -223,15 +261,11 @@
             const borderCol = isObj ? (item.col || '#3c3c3c') : '#3c3c3c';
 
             const btn = document.createElement('button');
-            
-            // Formatierung: Spawn [Emoji] [Label]
             btn.innerText = `Spawn ${emoji} ${label}`;
             btn.style.cssText = `background:#222; border:1px solid ${borderCol}; color:#fff; padding:10px; cursor:pointer; border-radius:4px; text-align:left; font-family:inherit; font-size:11px; transition: background 0.1s;`;
             
             btn.onmouseover = () => btn.style.background = '#333';
             btn.onmouseout = () => btn.style.background = '#222';
-            
-            // Reicht das komplette Item-Objekt weiter!
             btn.onclick = () => spawnSingleItem(item);
             grid.appendChild(btn);
         });
@@ -263,15 +297,57 @@
 
     function renderCheatsView() {
         contentContainer.innerHTML = '<h3 style="margin:0 0 15px 0; color:#00ffaa;">Engine Macro Utilities</h3>';
-        const grid = document.createElement('div'); grid.style.cssText = 'display:grid; grid-template-columns: 1fr 1fr; gap:10px;';
-        const buttons = [
+        
+        // --- DER GEWÜNSCHTE TIMER FREEZER (CHECKBOX-DESIGN) ---
+        const freezeContainer = document.createElement('div');
+        freezeContainer.style.cssText = 'background:#1b2a22; border:1px solid #00ffaa; padding:12px; border-radius:6px; margin-bottom:15px; display:flex; align-items:center; gap:10px; user-select:none;';
+        
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = 'freeze-timer-cb';
+        checkbox.style.cssText = 'width:16px; height:16px; cursor:pointer; accent-color:#00ffaa;';
+        checkbox.checked = freezeTimerActive;
+        
+        checkbox.onchange = (e) => toggleTimerFreeze(e.target.checked);
+        
+        const label = document.createElement('label');
+        label.htmlFor = 'freeze-timer-cb';
+        label.innerText = '❄️ FREEZE MATCH TIMER (Einfrieren)';
+        label.style.cssText = 'color:#00ffaa; font-weight:bold; font-size:12px; cursor:pointer;';
+        
+        freezeContainer.appendChild(checkbox);
+        freezeContainer.appendChild(label);
+        contentContainer.appendChild(freezeContainer);
+        // --------------------------------------------------------
+
+        const grid = document.createElement('div'); 
+        grid.style.cssText = 'display:grid; grid-template-columns: 1fr 1fr; gap:10px;';
+        
+        const cheats = [
+            { name: '❤️ Heal Player 1 (+Full HP)', act: () => { if(typeof GS!=='undefined' && GS.p1) { GS.p1.hp = 100; logToDebug('RESULT', 'P1 Fully Healed'); } else { logToDebug('ERROR', 'P1 Entity not running'); } } },
+            { name: '💥 Insta-Kill Player 2 / CPU', act: () => { if(typeof GS!=='undefined' && GS.p2) { GS.p2.hp = 0; logToDebug('RESULT', 'P2 HP set to 0!'); } else { logToDebug('ERROR', 'P2 Entity not running'); } } },
+            { name: '🔥 Infinite Special Active', act: () => {
+                if(!infSpecialLoop) {
+                    infSpecialLoop = setInterval(() => {
+                        if(typeof GS!=='undefined') {
+                            if(GS.p1) GS.p1.spCharge = 1;
+                            if(GS.p2) GS.p2.spCharge = 1;
+                        }
+                    }, 50);
+                    logToDebug('SYSTEM', 'Infinite Specials Engaged.');
+                } else {
+                    clearInterval(infSpecialLoop); infSpecialLoop = null;
+                    logToDebug('SYSTEM', 'Infinite Specials Disabled.');
+                }
+            }},
+            { name: '🚀 Toggle Overlord Speed Mode', act: () => { if(typeof GS!=='undefined' && GS.p1) { GS.p1.vxMax = GS.p1.vxMax === 24 ? 8 : 24; logToDebug('RESULT', `P1 Max Speed modified to: ${GS.p1.vxMax}`); } } },
             { name: '🎨 Toggle Wireframes', act: () => document.querySelectorAll('*').forEach(el => el.style.outline = el.style.outline ? '' : '1px solid #00ffaa') },
             { name: '✏️ Document Edit Mode', act: () => document.designMode = document.designMode === 'on' ? 'off' : 'on' },
             { name: '🧹 Clear Browser Cache', act: () => { localStorage.clear(); sessionStorage.clear(); alert('Cache wiped.'); } },
-            { name: '💀 Force Game Crash Simulation', act: () => { throw new Error("Overlord Dev Crash Triggered!"); } },
             { name: '🔄 Speed Reload Window', act: () => window.location.reload() }
         ];
-        buttons.forEach(b => {
+        
+        cheats.forEach(b => {
             const btn = document.createElement('button'); btn.innerText = b.name; btn.style.cssText = 'background:#222; border:1px solid #3a3a3a; color:#fff; padding:10px; cursor:pointer; border-radius:4px; font-family:inherit; text-align:left; font-size:11px;';
             btn.onclick = b.act; grid.appendChild(btn);
         });
@@ -293,7 +369,8 @@
                 box.innerHTML = `
                     <b style="color:#ff00ff">🎮 Game Engine Stats:</b><br>
                     • Active Items in Engine (GS.items): <span style="color:#55ff55">${(typeof GS !== 'undefined' && GS.items) ? GS.items.length : 'N/A'}</span><br>
-                    • Registered Item Prototypes: <span style="color:#55ff55">${activeItemTypes ? activeItemTypes.length : 'N/A'}</span><br><br>
+                    • Registered Item Prototypes: <span style="color:#55ff55">${activeItemTypes ? activeItemTypes.length : 'N/A'}</span><br>
+                    • Player 1 HP: <span style="color:#3b9eff">${(typeof GS !== 'undefined' && GS.p1) ? Math.ceil(GS.p1.hp) : 'N/A'}</span> | Player 2 HP: <span style="color:#ff3b5c">${(typeof GS !== 'undefined' && GS.p2) ? Math.ceil(GS.p2.hp) : 'N/A'}</span><br><br>
                     <b style="color:#00bfff">💻 Render & Hardware Diagnostics:</b><br>
                     • Engine Framerate: <span style="color:#00ffaa; font-weight:bold">${performanceStats.fps} FPS</span><br>
                     • Mouse Vector Coordinate: X: ${mousePos.x}px | Y: ${mousePos.y}px<br>
@@ -316,8 +393,10 @@
 
             if (cmdLower === 'spawnrnd') {
                 spawnRandomItem();
+            } else if (cmdLower === 'freeze') {
+                toggleTimerFreeze(!freezeTimerActive);
             } else if (cmdLower === 'help') {
-                logToDebug('SYSTEM', 'Available Commands:\n -> spawnRND; (Spawns random item)\n -> clear; (Clears log window)\n -> wireframe; (Toggles visual layouts)\n -> reload; (Refreshes game)\n -> edit; (Enables webpage editor)');
+                logToDebug('SYSTEM', 'Available Commands:\n -> spawnRND; (Spawns random item)\n -> freeze; (Toggles Match Timer freeze)\n -> clear; (Clears log window)\n -> wireframe; (Toggles visual layouts)\n -> reload; (Refreshes game)');
             } else if (cmdLower === 'clear') {
                 devLogs.length = 0;
                 updateConsoleView();
@@ -326,9 +405,6 @@
                 logToDebug('SYSTEM', 'Wireframe styles toggled.');
             } else if (cmdLower === 'reload') {
                 window.location.reload();
-            } else if (cmdLower === 'edit') {
-                document.designMode = document.designMode === 'on' ? 'off' : 'on';
-                logToDebug('SYSTEM', `DesignMode is now: ${document.designMode}`);
             } else {
                 try {
                     const result = window.eval(command);
