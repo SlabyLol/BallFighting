@@ -274,11 +274,11 @@ body.pve .act-cluster{grid-template-columns:repeat(2,70px);grid-template-rows:re
         <div class="diff-row" id="diff-row" style="display:none">
           <label>CPU Difficulty</label>
           <div class="diff-opts" id="diff-opts">
-            <button class="diff-btn" data-d="easy">Easy</button>
-            <button class="diff-btn on" data-d="medium">Medium</button>
-            <button class="diff-btn" data-d="hard">Hard</button>
-            <button class="diff-btn" data-d="insane">Insane</button>
-          </div>
+  <button type="button" class="diff-btn" data-d="easy">Easy</button>
+  <button type="button" class="diff-btn on" data-d="medium">Medium</button>
+  <button type="button" class="diff-btn" data-d="hard">Hard</button>
+  <button type="button" class="diff-btn" data-d="insane">Insane</button>
+      </div>
         </div>
       </div>
     </div>
@@ -1027,23 +1027,14 @@ function syncSettingsUI(){
 }
 
 function wire(){
-  // Menu Buttons
   $('btn-pvp').onclick=()=>openCharSelect('pvp');
   $('btn-pve').onclick=()=>openCharSelect('pve');
-
-  // Character Select Buttons (wichtig: immer neu binden)
-  function bindCharButtons(){
-    $('btn-char-back').onclick=()=>{showScreen('s-menu');startMenu();};
-    $('btn-char-play').onclick=()=>{
-      PROFILES[0].name=$('name1').value.trim()||'Player 1';
-      PROFILES[1].name=$('name2').value.trim()||(pendingMode==='pve'?'CPU':'Player 2');
-      saveProfiles();
-      startMatch(pendingMode);
-    };
-  }
-  bindCharButtons(); // initial binden
-
-  // Rest der Bindings
+  $('btn-char-back').onclick=()=>{showScreen('s-menu');startMenu();};
+  $('btn-char-play').onclick=()=>{
+    PROFILES[0].name=$('name1').value.trim()||'Player 1';
+    PROFILES[1].name=$('name2').value.trim()||(pendingMode==='pve'?'CPU':'Player 2');
+    saveProfiles();startMatch(pendingMode);
+  };
   $('btn-howto').onclick=()=>showOv('ov-howto');
   $('btn-settings').onclick=()=>{syncSettingsUI();showOv('ov-settings');};
   $('btn-resume').onclick=()=>togglePause();
@@ -1055,7 +1046,6 @@ function wire(){
   $('btn-howto-back').onclick=()=>hideOv('ov-howto');
   $('btn-settings-save').onclick=()=>{cfgSave();hideOv('ov-settings');};
   $('pause-btn').onclick=()=>togglePause();
-
   window.addEventListener('resize',()=>{GS.running?arenaResize():mResize();});
 }
 
