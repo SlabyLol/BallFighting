@@ -72,7 +72,7 @@
         justify-content: space-between;
         align-items: center;
     `;
-    header.innerHTML = `<span>DarkFox Co. Dev Panel v1.0</span>`;
+    header.innerHTML = `<span>Dev Panel v1.0</span>`;
     
     const closeBtn = document.createElement('button');
     closeBtn.innerText = 'X';
