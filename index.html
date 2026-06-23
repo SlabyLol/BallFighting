@@ -1095,6 +1095,18 @@ function wire(){
   $('btn-settings-save').onclick=()=>{cfgSave();hideOv('ov-settings');};
   $('pause-btn').onclick=()=>togglePause();
   window.addEventListener('resize',()=>{GS.running?arenaResize():mResize();});
+  // Füge das unten in deine wire() Funktion ein, falls noch nicht geschehen:
+if ($('diff-opts')) {
+  $('diff-opts').querySelectorAll('.diff-btn').forEach(btn => {
+    btn.onclick = () => {
+      CPU_DIFFICULTY = btn.getAttribute('data-d') || 'medium';
+      $('diff-opts').querySelectorAll('.diff-btn').forEach(b => {
+        b.classList.toggle('on', b === btn);
+      });
+      saveProfiles();
+    };
+  });
+}
 }
 
 document.addEventListener('DOMContentLoaded',()=>{
