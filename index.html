@@ -531,40 +531,45 @@ let pendingMode = 'pvp';
 function openCharSelect(mode) {
   pendingMode = mode;
   const isCPU = (mode === 'pve');
-
-  // 1. Text für Player 2 / CPU Karte anpassen
+  
+  // 1. Sicheres Ändern der UI-Texte
   const label2 = $('pcard2-label');
   if (label2) label2.textContent = isCPU ? 'CPU' : 'Player 2';
-
-  // 2. Platzhalter und Werte für Namen setzen
-  const name2Input = $('name2');
-  if (name2Input) {
-    name2Input.placeholder = isCPU ? 'CPU Name' : 'Player 2';
-    name2Input.value = isCPU ? 'CPU' : (PROFILES[1].name === 'CPU' ? 'Player 2' : PROFILES[1].name);
-  }
   
-  const name1Input = $('name1');
-  if (name1Input) name1Input.value = PROFILES[0].name;
+  const charTitle = $('char-title');
+  if (charTitle) charTitle.textContent = isCPU ? 'Configure CPU Match' : 'Choose Your Fighter';
 
-  // 3. CPU-Schwierigkeitsregler (diff-row) ein- oder ausblenden
-  const diffRow = $('diff-row');
-  if (diffRow) diffRow.style.display = isCPU ? 'flex' : 'none';
-
-  // 4. Swatches und Ball-Previews für BEIDE neu aufbauen
-  buildSwatches('swatches1', 0);
-  buildSwatches('swatches2', 1);
-
-  // 5. Buttons für die Schwierigkeit synchronisieren, falls CPU aktiv ist
-  if (isCPU) {
-    const diffOpts = $('diff-opts');
-    if (diffOpts) {
-      diffOpts.querySelectorAll('.diff-btn').forEach(b => {
-        b.classList.toggle('on', b.dataset.d === CPU_DIFFICULTY);
-      });
+  // 2. Werte in die Inputs schreiben (Sicherheits-Check gegen Abstürze)
+  const n1 = $('name1');
+  const n2 = $('name2');
+  if (n1) n1.value = PROFILES[0].name || 'Player 1';
+  if (n2) {
+    if (isCPU) {
+      n2.value = 'Machine'; // Festen String nutzen, um Namens-Konflikte zu vermeiden
+      n2.placeholder = 'CPU Name';
+    } else {
+      n2.value = PROFILES[1].name === 'CPU' ? 'Player 2' : PROFILES[1].name;
+      n2.placeholder = 'Player 2';
     }
   }
 
-  // 6. Menü-Partikel stoppen und Screen wechseln
+  // 3. CPU-Schwierigkeitszeile anzeigen/verstecken
+  const diffRow = $('diff-row');
+  if (diffRow) diffRow.style.display = isCPU ? 'flex' : 'none';
+
+  // 4. Erst JETZT die Swatches bauen (so sind die Canvas-Elemente sicher bereit)
+  buildSwatches('swatches1', 0);
+  buildSwatches('swatches2', 1);
+
+  // 5. Buttons für CPU-Schwierigkeit synchronisieren
+  const diffOpts = $('diff-opts');
+  if (diffOpts && isCPU) {
+    diffOpts.querySelectorAll('.diff-btn').forEach(b => {
+      b.classList.toggle('on', b.dataset.d === CPU_DIFFICULTY);
+    });
+  }
+
+  // 6. Erst ganz am Schluss umschalten
   stopMenu();
   showScreen('s-char');
 }
