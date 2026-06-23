@@ -525,20 +525,19 @@ function buildSwatches(cid,pid){
 }
 
 // ── Character select ─────────────────────────────────────────
-let pendingMode = 'pvp';
-
-function openCharSelect(mode) {
-  pendingMode = mode;
-  const isCPU = (mode === 'pve');
-  
-  // Zeige oder verstecke die CPU-Schwierigkeits-Optionen
-  $('diff-row').style.display = isCPU ? 'block' : 'none';
-  $('pcard2-label').textContent = isCPU ? 'CPU' : 'Player 2';
-  $('name2').value = isCPU ? 'CPU' : (PROFILES[1].name === 'CPU' ? 'Player 2' : PROFILES[1].name);
-  
-  // Aktualisiere Titel und wechsle den Screen
-  $('char-title').textContent = isCPU ? 'Configure CPU Match' : 'Choose Your Fighter';
-  showScreen('s-char');
+let pendingMode='pvp';
+function openCharSelect(mode){
+  pendingMode=mode;
+  const isCPU=mode==='pve';
+  $('pcard2-label').textContent=isCPU?'CPU':'Player 2';
+  $('p2-card').style.opacity='1';$('p2-card').style.pointerEvents='all';
+  $('diff-row').style.display=isCPU?'flex':'none';
+  $('name2').placeholder=isCPU?'CPU Name':'Player 2';
+  $('name1').value=PROFILES[0].name;$('name2').value=PROFILES[1].name;
+  buildSwatches('swatches1',0);buildSwatches('swatches2',1);
+  // Sync difficulty buttons
+  $('diff-opts').querySelectorAll('.diff-btn').forEach(b=>b.classList.toggle('on',b.dataset.d===CPU_DIFFICULTY));
+  stopMenu();showScreen('s-char');
 }
 
 // ── Game particles ───────────────────────────────────────────
