@@ -538,6 +538,9 @@ function openCharSelect(mode) {
   
   // Aktualisiere Titel und wechsle den Screen
   $('char-title').textContent = isCPU ? 'Configure CPU Match' : 'Choose Your Fighter';
+  // Das muss aufgerufen werden, wenn der Charakter-Screen sichtbar wird:
+buildSwatches('swatches1', 0);
+buildSwatches('swatches2', 1);
   showScreen('s-char');
 }
 
