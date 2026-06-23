@@ -7,29 +7,46 @@
     let currentTab = 'console';
     let mousePos = { x: 0, y: 0 };
     let lastKey = 'None';
+    let performanceStats = { fps: 0, lastTime: performance.now(), frames: 0 };
 
-    // 1. KONSOLEN, FEHLER & GLOBAL TRACKING HOOKS
-    const consoleTypes = ['log', 'error', 'warn', 'info', 'debug', 'dir'];
+    // 1. KONSOLEN & FEHLER HOOKS
+    const consoleTypes = ['log', 'error', 'warn', 'info', 'debug'];
     consoleTypes.forEach(type => {
         const original = console[type];
         console[type] = function(...args) {
-            logToDebug(type.toUpperCase(), args.map(arg => 
-                typeof arg === 'object' ? JSON.stringify(arg) : arg
-            ).join(' '));
+            logToDebug(type.toUpperCase(), args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' '));
             original.apply(console, args);
         };
     });
 
     window.addEventListener('error', (e) => logToDebug('ERROR', `${e.message} (${e.filename}:${e.lineno})`));
-    window.addEventListener('unhandledrejection', (e) => logToDebug('ERROR', `Promise Reject: ${e.reason}`));
+    window.addEventListener('unhandledrejection', (e) => logToDebug('ERROR', `Promise: ${e.reason}`));
     
-    // Globale Inputs tracken für das Dashboard
     window.addEventListener('mousemove', (e) => { mousePos.x = e.clientX; mousePos.y = e.clientY; });
     window.addEventListener('keydown', (e) => { 
-        lastKey = `${e.key} (Code: ${e.keyCode})`;
-        // Secret Trigger check
-        trackSecretTrigger(e.key);
+        lastKey = `${e.key} (${e.keyCode})`;
+        if (e.key.length === 1) {
+            inputBuffer += e.key;
+            if (inputBuffer.toLowerCase().endsWith('debug')) {
+                toggleDebugPanel();
+                inputBuffer = ""; 
+            }
+        }
     });
+    let inputBuffer = "";
+
+    // FPS Counter Loop
+    function updateFPS() {
+        performanceStats.frames++;
+        const now = performance.now();
+        if (now >= performanceStats.lastTime + 1000) {
+            performanceStats.fps = Math.round((performanceStats.frames * 1000) / (now - performanceStats.lastTime));
+            performanceStats.frames = 0;
+            performanceStats.lastTime = now;
+        }
+        requestAnimationFrame(updateFPS);
+    }
+    requestAnimationFrame(updateFPS);
 
     function logToDebug(type, message) {
         const time = new Date().toLocaleTimeString();
@@ -37,102 +54,89 @@
         if (isPanelOpen && currentTab === 'console' && !isMinimized) updateConsoleView();
     }
 
-    // 2. SECRET TRIGGER ("debug")
-    let inputBuffer = "";
-    function trackSecretTrigger(key) {
-        if (key.length === 1) {
-            inputBuffer += key;
-            if (inputBuffer.toLowerCase().endsWith('debug')) {
-                toggleDebugPanel();
-                inputBuffer = ""; 
-            }
+    // 2. ENGINE SPAWN LOGIK
+    function spawnSingleItem(type) {
+        if (typeof ITEM_TYPES !== 'undefined' && typeof GS !== 'undefined' && typeof Item !== 'undefined') {
+            const xPos = (typeof rnd === 'function' && typeof W !== 'undefined') ? rnd(W * .1, W * .9) : window.innerWidth / 2;
+            const fyVal = typeof FY !== 'undefined' ? FY : 0;
+            GS.items.push(new Item(xPos, -30, type, fyVal));
+            logToDebug('SYSTEM', `Spawned item: ${type}`);
+        } else {
+            logToDebug('ERROR', 'Game engine variables missing for spawning!');
+        }
+    }
+
+    function spawnRandomItem() {
+        if (typeof ITEM_TYPES !== 'undefined' && ITEM_TYPES.length > 0) {
+            const index = Math.floor(Math.random() * ITEM_TYPES.length);
+            spawnSingleItem(ITEM_TYPES[index]);
+        } else {
+            logToDebug('ERROR', 'ITEM_TYPES array is empty or undefined!');
         }
     }
 
     // 3. UI INITIALISIERUNG
     const panel = document.createElement('div');
-    panel.id = 'dev-debug-panel';
     panel.style.cssText = `
-        position: fixed; bottom: 20px; right: 20px;
-        width: 650px; height: 550px;
-        background: #121212; color: #e0e0e0;
-        font-family: 'Consolas', monospace; font-size: 12px;
-        box-shadow: 0 20px 50px rgba(0,0,0,0.9); border-radius: 10px;
-        border: 1px solid #00ffaa; display: none;
-        flex-direction: column; z-index: 999999; overflow: hidden;
-        transition: height 0.15s ease-in-out, width 0.15s ease-in-out;
+        position: fixed; bottom: 20px; right: 20px; width: 750px; height: 550px;
+        background: #111; color: #e0e0e0; font-family: 'Consolas', monospace; font-size: 12px;
+        box-shadow: 0 25px 60px rgba(0,0,0,0.9); border-radius: 8px; border: 1px solid #00ffaa;
+        display: none; flex-direction: column; z-index: 999999; overflow: hidden;
+        transition: height 0.15s, width 0.15s;
     `;
 
     // Header
     const header = document.createElement('div');
-    header.style.cssText = `
-        background: #1e1e1e; padding: 12px; font-weight: bold;
-        border-bottom: 1px solid #2d2d2d; display: flex;
-        justify-content: space-between; align-items: center; color: #00ffaa;
-        user-select: none;
-    `;
-    header.innerHTML = `<span>DarkFox Co. Ultimate Dev-Suite v5.0</span>`;
+    header.style.cssText = `background:#1a1a1a; padding:12px; font-weight:bold; border-bottom:1px solid #252525; display:flex; justify-content:space-between; align-items:center; color:#00ffaa; user-select:none;`;
+    header.innerHTML = `<span>DarkFox Co. Overlord Engine v6.0</span>`;
     
     const controls = document.createElement('div');
-    controls.style.cssText = 'display: flex; gap: 12px; align-items: center;';
+    const minBtn = document.createElement('button'); minBtn.innerText = '_'; minBtn.style.cssText = 'background:transparent; border:none; color:#00ffaa; cursor:pointer; font-size:16px; margin-right:10px;'; minBtn.onclick = toggleMinimize;
+    const closeBtn = document.createElement('button'); closeBtn.innerText = '✕'; closeBtn.style.cssText = 'background:transparent; border:none; color:#ff5555; cursor:pointer; font-size:14px;'; closeBtn.onclick = toggleDebugPanel;
+    controls.appendChild(minBtn); controls.appendChild(closeBtn); header.appendChild(controls); panel.appendChild(header);
 
-    const minBtn = document.createElement('button');
-    minBtn.innerText = '_';
-    minBtn.style.cssText = 'background:transparent; border:none; color:#00ffaa; cursor:pointer; font-size:16px; font-weight:bold;';
-    minBtn.onclick = toggleMinimize;
-
-    const closeBtn = document.createElement('button');
-    closeBtn.innerText = '✕';
-    closeBtn.style.cssText = 'background:transparent; border:none; color:#ff5555; cursor:pointer; font-size:14px; font-weight:bold;';
-    closeBtn.onclick = toggleDebugPanel;
+    // Main Layout (Sidebar + Content)
+    const mainLayout = document.createElement('div');
+    mainLayout.style.cssText = 'display: flex; flex-grow: 1; overflow: hidden;';
     
-    controls.appendChild(minBtn);
-    controls.appendChild(closeBtn);
-    header.appendChild(controls);
-    panel.appendChild(header);
-
-    // Navigation Tabs
-    const nav = document.createElement('div');
-    nav.id = 'dev-nav';
-    nav.style.cssText = `display: flex; background: #1a1a1a; border-bottom: 1px solid #2d2d2d;`;
+    // Sidebar Menü
+    const sidebar = document.createElement('div');
+    sidebar.id = 'dev-sidebar';
+    sidebar.style.cssText = 'width: 160px; background: #161616; border-right: 1px solid #252525; display: flex; flex-direction: column;';
     
     const tabs = {
         console: '🖥️ Terminal',
-        elements: '🔍 DOM Explorer',
-        items: '📦 Item Cheats',
-        actions: '⚙️ Utilities',
-        info: 'ℹ️ Diagnostics'
+        items: '📦 Item Engine',
+        actions: '⚡ Quick Cheats',
+        dom: '🔍 DOM Tree',
+        stats: '📊 Performance'
     };
 
     Object.keys(tabs).forEach(tabId => {
-        const tabBtn = document.createElement('button');
-        tabBtn.innerText = tabs[tabId];
-        tabBtn.style.cssText = `
-            flex: 1; padding: 10px; background: transparent; border: none;
-            color: #888; cursor: pointer; font-family: inherit; font-size: 11px;
-            border-bottom: 2px solid transparent; transition: all 0.2s;
-        `;
-        tabBtn.onclick = () => switchTab(tabId);
-        nav.appendChild(tabBtn);
-        tabs[tabId] = tabBtn; 
+        const btn = document.createElement('button');
+        btn.innerText = tabs[tabId];
+        btn.style.cssText = 'padding:12px 10px; background:transparent; border:none; color:#888; text-align:left; cursor:pointer; font-family:inherit; font-size:11px; border-left: 3px solid transparent;';
+        btn.onclick = () => switchTab(tabId);
+        sidebar.appendChild(btn);
+        tabs[tabId] = btn;
     });
-    panel.appendChild(nav);
+    mainLayout.appendChild(sidebar);
 
-    // Main Content
+    // Content Box
     const contentContainer = document.createElement('div');
-    contentContainer.id = 'dev-content';
-    contentContainer.style.cssText = `flex-grow: 1; overflow-y: auto; background: #151515; padding: 12px;`;
-    panel.appendChild(contentContainer);
+    contentContainer.style.cssText = 'flex-grow:1; padding:15px; overflow-y:auto; background:#131313;';
+    mainLayout.appendChild(contentContainer);
+    panel.appendChild(mainLayout);
 
-    // CLI
+    // CLI Command Bar
     const cliContainer = document.createElement('div');
     cliContainer.id = 'dev-cli';
-    cliContainer.style.cssText = `display: flex; background: #1a1a1a; border-top: 1px solid #2d2d2d; padding: 6px;`;
-    cliContainer.innerHTML = `<span style="color: #00ffaa; padding: 5px 0 5px 5px; font-weight: bold;">❯ </span>`;
+    cliContainer.style.cssText = 'display:flex; background:#161616; border-top:1px solid #252525; padding:8px;';
+    cliContainer.innerHTML = '<span style="color:#00ffaa; padding:4px 5px; font-weight:bold;">❯</span>';
     const cmdInput = document.createElement('input');
     cmdInput.type = 'text';
-    cmdInput.placeholder = 'Execute JavaScript instantly...';
-    cmdInput.style.cssText = `flex-grow: 1; background: transparent; border: none; color: #fff; font-family: inherit; font-size: 12px; padding: 5px; outline: none;`;
+    cmdInput.placeholder = 'Type command (e.g. spawnRND; wireframe; help;) ...';
+    cmdInput.style.cssText = 'flex-grow:1; background:transparent; border:none; color:#fff; font-family:inherit; font-size:12px; padding:4px; outline:none;';
     cliContainer.appendChild(cmdInput);
     panel.appendChild(cliContainer);
 
@@ -142,201 +146,172 @@
     function toggleMinimize() {
         isMinimized = !isMinimized;
         if (isMinimized) {
-            panel.style.height = '42px';
-            panel.style.width = '280px';
-            nav.style.display = 'none';
-            contentContainer.style.display = 'none';
-            cliContainer.style.display = 'none';
+            panel.style.height = '42px'; panel.style.width = '280px';
+            mainLayout.style.display = 'none'; cliContainer.style.display = 'none';
             minBtn.innerText = '⬜';
         } else {
-            panel.style.height = '550px';
-            panel.style.width = '650px';
-            nav.style.display = 'flex';
-            contentContainer.style.display = 'block';
-            minBtn.innerText = '_';
+            panel.style.height = '550px'; panel.style.width = '750px';
+            mainLayout.style.display = 'flex'; minBtn.innerText = '_';
             switchTab(currentTab);
         }
     }
 
-    // 5. TAB CONTROL & RENDERING
+    // 5. TAB STEUERUNG
     function switchTab(tabId) {
         currentTab = tabId;
         Object.keys(tabs).forEach(id => {
             tabs[id].style.color = (id === tabId) ? '#00ffaa' : '#888';
-            tabs[id].style.background = (id === tabId) ? '#151515' : 'transparent';
-            tabs[id].style.borderBottomColor = (id === tabId) ? '#00ffaa' : 'transparent';
+            tabs[id].style.background = (id === tabId) ? '#131313' : 'transparent';
+            tabs[id].style.borderLeftColor = (id === tabId) ? '#00ffaa' : 'transparent';
         });
 
         contentContainer.innerHTML = '';
         cliContainer.style.display = (tabId === 'console') ? 'flex' : 'none';
 
         if (tabId === 'console') updateConsoleView();
-        else if (tabId === 'elements') renderElementsView();
-        else if (tabId === 'items') renderItemSpawnerView();
-        else if (tabId === 'actions') renderUtilitiesView();
-        else if (tabId === 'info') renderDiagnosticsView();
+        else if (tabId === 'items') renderItemsView();
+        else if (tabId === 'actions') renderCheatsView();
+        else if (tabId === 'dom') renderDomView();
+        else if (tabId === 'stats') renderStatsView();
     }
 
-    // TAB: TERMINAL (KONSOLEN INTERFACE)
     function updateConsoleView() {
         if (currentTab !== 'console') return;
         contentContainer.innerHTML = '';
         if (devLogs.length === 0) {
-            contentContainer.innerHTML = '<span style="color: #555;">// System online. Hooked to all event logs.</span>';
+            contentContainer.innerHTML = '<span style="color:#555;">// Console ready. Type help; below for unique macro triggers.</span>';
             return;
         }
         devLogs.forEach(log => {
             const entry = document.createElement('div');
-            entry.style.cssText = 'padding: 4px; border-bottom: 1px solid #1a1a1a; white-space: pre-wrap; font-size: 11px;';
+            entry.style.cssText = 'padding:3px 0; border-bottom:1px solid #1a1a1a; font-size:11px; white-space:pre-wrap;';
             let color = '#d4d4d4';
             if (log.type === 'ERROR') color = '#ff4444';
             if (log.type === 'WARN') color = '#ff9900';
             if (log.type === 'CMD') color = '#00ffaa';
             if (log.type === 'RESULT') color = '#55ff55';
-            if (log.type === 'INFO') color = '#00bfff';
+            if (log.type === 'SYSTEM') color = '#ff00ff';
             
-            entry.style.color = color;
-            entry.innerHTML = `<span style="color: #444;">[${log.time}]</span> <b>${log.type}:</b> ${log.message}`;
+            entry.innerHTML = `<span style="color:#444;">[${log.time}]</span> <b style="color:${color}">${log.type}:</b> ${log.message}`;
             contentContainer.appendChild(entry);
         });
         contentContainer.scrollTop = contentContainer.scrollHeight;
     }
 
-    // TAB: DOM EXPLORER
-    function renderElementsView() {
-        contentContainer.innerHTML = '<h4 style="margin:0 0 10px 0; color:#00ffaa;">Live DOM OuterHTML (Truncated)</h4>';
-        const pre = document.createElement('pre');
-        pre.style.cssText = 'margin:0; font-size:11px; color:#4fc1ff; white-space: pre-wrap; background:#111; padding:10px; border-radius:4px; max-height:400px; overflow-y:auto;';
-        pre.innerText = document.documentElement.outerHTML.slice(0, 25000) + '\n\n// ... End of Explorer Preview';
-        contentContainer.appendChild(pre);
-    }
-
-    // TAB: ITEM CHEATS (DEINE DYNAMISCHE SPAWN ENGINE)
-    function renderItemSpawnerView() {
-        contentContainer.innerHTML = '<h4 style="margin:0 0 10px 0; color:#00ffaa;">Dynamic Game Item Spawner</h4>';
+    function renderItemsView() {
+        contentContainer.innerHTML = '<h3 style="margin:0 0 15px 0; color:#00ffaa;">Item Matrix Spawner</h3>';
         
-        if (typeof ITEM_TYPES === 'undefined' || typeof GS === 'undefined' || typeof Item === 'undefined') {
-            contentContainer.innerHTML += `<div style="color:#ff4444; padding:10px; background:rgba(255,0,0,0.1); border-radius:4px;">
-                ⚠️ <b>Engine-Fehler:</b> Globale Variablen (<code>ITEM_TYPES</code>, <code>GS</code>, oder <code>Item</code>) wurden auf dieser Seite nicht gefunden.<br>
-                Stelle sicher, dass dieses Skript nach deinen Spiel-Skripten geladen wird!
-            </div>`;
+        const rndBtn = document.createElement('button');
+        rndBtn.innerText = '🎲 SPAWN RANDOM ITEM (spawnRND;)';
+        rndBtn.style.cssText = 'width:100%; background:#8a1a8a; border:1px solid #ff00ff; color:#fff; padding:12px; cursor:pointer; border-radius:4px; font-weight:bold; margin-bottom:15px; font-family:inherit;';
+        rndBtn.onclick = spawnRandomItem;
+        contentContainer.appendChild(rndBtn);
+
+        if (typeof ITEM_TYPES === 'undefined') {
+            contentContainer.innerHTML += '<p style="color:#ff4444;">⚠️ ITEM_TYPES array globally not found.</p>';
             return;
         }
 
-        // Haupt-Trigger für "Spawne alle auf einmal"
-        const spawnAllBtn = document.createElement('button');
-        spawnAllBtn.innerText = `📦 SPAWN ALL (${ITEM_TYPES.length} TYPES AT ONCE)`;
-        spawnAllBtn.style.cssText = 'width:100%; background:#1a4a3a; border:1px solid #00ffaa; color:#fff; padding:12px; cursor:pointer; border-radius:6px; font-weight:bold; margin-bottom:15px; font-family:inherit;';
-        spawnAllBtn.onclick = () => {
-            ITEM_TYPES.forEach(type => executeSpawn(type));
-            console.log(`💥 All ${ITEM_TYPES.length} items spawned successfully.`);
-        };
-        contentContainer.appendChild(spawnAllBtn);
-
-        // Grid für jeden einzelnen Typen generieren
-        contentContainer.innerHTML += '<p style="color:#888; font-size:11px; margin: 10px 0;">Spawn single item types selectively:</p>';
         const grid = document.createElement('div');
-        grid.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 8px;';
-
-        ITEM_TYPES.forEach((type, index) => {
-            const singleBtn = document.createElement('button');
-            singleBtn.innerText = `🔹 [${index}] Spawn: ${type}`;
-            singleBtn.style.cssText = 'background:#222; border:1px solid #444; color:#fff; padding:8px; cursor:pointer; border-radius:4px; text-align:left; font-family:inherit; font-size:11px;';
-            singleBtn.onmouseover = () => singleBtn.style.background = '#333';
-            singleBtn.onmouseout = () => singleBtn.style.background = '#222';
-            singleBtn.onclick = () => {
-                executeSpawn(type);
-                console.log(`💎 Spawned single item: ${type}`);
-            };
-            grid.appendChild(singleBtn);
-        });
-        contentContainer.appendChild(grid);
-    }
-
-    function executeSpawn(type) {
-        const xPos = (typeof rnd === 'function' && typeof W !== 'undefined') ? rnd(W * .1, W * .9) : window.innerWidth / 2;
-        const fyVal = typeof FY !== 'undefined' ? FY : 0;
-        GS.items.push(new Item(xPos, -30, type, fyVal));
-    }
-
-    // TAB: UTILITIES (ANZEIGEN & CHEATS)
-    function renderUtilitiesView() {
-        contentContainer.innerHTML = '<h4 style="margin:0 0 10px 0; color:#00ffaa;">Global Page Modifiers</h4>';
-        const grid = document.createElement('div');
-        grid.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 10px;';
-
-        const actions = [
-            { name: '🎨 Toggle Wireframe Mode', action: () => { document.querySelectorAll('*').forEach(el => el.style.outline = el.style.outline ? '' : '1px solid #00ffaa'); }},
-            { name: '✏️ Turn ContentEditable ON', action: () => { document.body.contentEditable = document.body.contentEditable === 'true' ? 'false' : 'true'; }},
-            { name: '🗑️ Clear Local & Session Storage', action: () => { localStorage.clear(); sessionStorage.clear(); alert('All storages cleared!'); }},
-            { name: '🔄 Force Window Reload', action: () => { window.location.reload(); }},
-            { name: '🛑 Stop All CSS Animations', action: () => { document.querySelectorAll('*').forEach(el => el.style.animation = 'none'); }},
-            { name: '🌈 Active Rainbow Theme', action: () => { document.body.style.animation = 'devRainbow 5s linear infinite'; if(!document.getElementById('dev-style-rb')){let s=document.createElement('style');s.id='dev-style-rb';s.innerHTML='@keyframes devRainbow{0%{background:#300;}50%{background:#030;}100%{background:#300;}}';document.head.appendChild(s);}}}
-        ];
-
-        actions.forEach(act => {
+        grid.style.cssText = 'display:grid; grid-template-columns: 1fr 1fr; gap:8px;';
+        ITEM_TYPES.forEach(type => {
             const btn = document.createElement('button');
-            btn.innerText = act.name;
+            btn.innerText = `🎁 ${type}`;
             btn.style.cssText = 'background:#222; border:1px solid #3c3c3c; color:#fff; padding:8px; cursor:pointer; border-radius:4px; text-align:left; font-family:inherit; font-size:11px;';
-            btn.onclick = act.action;
+            btn.onclick = () => spawnSingleItem(type);
             grid.appendChild(btn);
         });
         contentContainer.appendChild(grid);
     }
 
-    // TAB: DIAGNOSTICS (LIVE-INFOS & STATS)
-    function renderDiagnosticsView() {
-        contentContainer.innerHTML = '<h4 style="margin:0 0 10px 0; color:#00ffaa;">Live Environment Diagnostics</h4>';
-        
-        const monitor = document.createElement('div');
-        monitor.style.cssText = 'background:#111; padding:10px; border-radius:6px; font-size:11px; line-height:1.6; margin-bottom:15px; border-left: 3px solid #00ffaa;';
-        
-        // Interaktiver Live-Updater für Maus und Keyboard
-        setInterval(() => {
-            if (currentTab === 'info' && isPanelOpen && !isMinimized) {
-                monitor.innerHTML = `
-                    <b>Maus-Koordinaten X/Y:</b> X: ${mousePos.x}px | Y: ${mousePos.y}px<br>
-                    <b>Letzter Keypress:</b> <span style="color:#00ffaa;">${lastKey}</span><br>
-                    <b>Total HTML Elements:</b> ${document.getElementsByTagName('*').length}<br>
-                    <b>Active Cookies:</b> ${document.cookie ? 'Yes' : 'No Cookies found'}
-                `;
-            }
-        }, 100);
-        contentContainer.appendChild(monitor);
+    function renderCheatsView() {
+        contentContainer.innerHTML = '<h3 style="margin:0 0 15px 0; color:#00ffaa;">Engine Macro Utilities</h3>';
+        const grid = document.createElement('div');
+        grid.style.cssText = 'display:grid; grid-template-columns: 1fr 1fr; gap:10px;';
 
-        const table = document.createElement('table');
-        table.style.cssText = 'width: 100%; border-collapse: collapse; font-size: 11px;';
-        const data = [
-            ['Secure Context (HTTPS)', window.isSecureContext ? 'Yes' : 'No'],
-            ['Viewport Dimension', `${window.innerWidth}x${window.innerHeight}`],
-            ['Screen Total Size', `${window.screen.width}x${window.screen.height}`],
-            ['Hardware Threads', navigator.hardwareConcurrency || 'N/A'],
-            ['Browser Language', navigator.language]
+        const buttons = [
+            { name: '🎨 Toggle Wireframes', act: () => document.querySelectorAll('*').forEach(el => el.style.outline = el.style.outline ? '' : '1px solid #00ffaa') },
+            { name: '✏️ Document Edit Mode', act: () => document.designMode = document.designMode === 'on' ? 'off' : 'on' },
+            { name: '🧹 Clear Browser Cache', act: () => { localStorage.clear(); sessionStorage.clear(); alert('Cache wiped.'); } },
+            { name: '💀 Force Game Crash Simulation', act: () => { throw new Error("Overlord Dev Crash Triggered!"); } },
+            { name: '🔄 Speed Reload Window', act: () => window.location.reload() },
+            { name: '👁️ Hide All Text Nodes', act: () => document.querySelectorAll('*').forEach(el => { if(el.innerText) el.style.opacity = el.style.opacity === '0' ? '1' : '0'; }) }
         ];
-        data.forEach(row => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td style="padding:6px; color:#9cdcfe; font-weight:bold; border-bottom:1px solid #222;">${row[0]}</td>
-                <td style="padding:6px; color:#ce9178; border-bottom:1px solid #222;">${row[1]}</td>
-            `;
-            table.appendChild(tr);
+
+        buttons.forEach(b => {
+            const btn = document.createElement('button');
+            btn.innerText = b.name;
+            btn.style.cssText = 'background:#222; border:1px solid #3a3a3a; color:#fff; padding:10px; cursor:pointer; border-radius:4px; font-family:inherit; text-align:left; font-size:11px;';
+            btn.onclick = b.act;
+            grid.appendChild(btn);
         });
-        contentContainer.appendChild(table);
+        contentContainer.appendChild(grid);
     }
 
-    // 6. CLI INPUT ENGINE
+    function renderDomView() {
+        contentContainer.innerHTML = '<h3 style="margin:0 0 15px 0; color:#00ffaa;">HTML Document Elements Tree</h3>';
+        const pre = document.createElement('pre');
+        pre.style.cssText = 'background:#050505; color:#a5d6ff; padding:10px; border-radius:4px; font-size:11px; max-height:420px; overflow:auto; white-space:pre-wrap; margin:0;';
+        pre.innerText = document.documentElement.outerHTML.slice(0, 30000);
+        contentContainer.appendChild(pre);
+    }
+
+    function renderStatsView() {
+        contentContainer.innerHTML = '<h3 style="margin:0 0 15px 0; color:#00ffaa;">Live Metrics Dashboard</h3>';
+        const box = document.createElement('div');
+        box.style.cssText = 'background:#161616; padding:15px; border-radius:6px; line-height:2; font-size:12px;';
+        
+        setInterval(() => {
+            if (currentTab === 'stats' && isPanelOpen && !isMinimized) {
+                box.innerHTML = `
+                    <b style="color:#ff00ff">🎮 Game Engine Stats:</b><br>
+                    • Active Items in Engine (GS.items): <span style="color:#55ff55">${(typeof GS !== 'undefined' && GS.items) ? GS.items.length : 'N/A'}</span><br>
+                    • Registered Item Prototypes: <span style="color:#55ff55">${typeof ITEM_TYPES !== 'undefined' ? ITEM_TYPES.length : 'N/A'}</span><br><br>
+                    <b style="color:#00bfff">💻 Render & Hardware Diagnostics:</b><br>
+                    • Engine Framerate: <span style="color:#00ffaa; font-weight:bold">${performanceStats.fps} FPS</span><br>
+                    • Mouse Vector Coordinate: X: ${mousePos.x}px | Y: ${mousePos.y}px<br>
+                    • Structural DOM Nodes: ${document.getElementsByTagName('*').length} elements<br>
+                    • Input Key Register: <span style="color:#ce9178">${lastKey}</span>
+                `;
+            }
+        }, 150);
+        contentContainer.appendChild(box);
+    }
+
+    // 6. EXPANDED TERMINAL INTERPRETER (CLI MACROS)
     cmdInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && cmdInput.value.trim() !== '') {
-            const command = cmdInput.value;
+            const command = cmdInput.value.trim();
             logToDebug('CMD', command);
             commandHistory.push(command);
             historyIndex = commandHistory.length;
 
-            try {
-                const result = window.eval(command);
-                logToDebug('RESULT', result !== undefined ? JSON.stringify(result) : 'undefined');
-            } catch (err) {
-                logToDebug('ERROR', `Eval Error: ${err.message}`);
+            // Engine Macro Commands Abfangschleife
+            const cmdLower = command.toLowerCase().replace(';', '');
+
+            if (cmdLower === 'spawnrnd') {
+                spawnRandomItem();
+            } else if (cmdLower === 'help') {
+                logToDebug('SYSTEM', 'Available Commands:\n -> spawnRND; (Spawns random item)\n -> clear; (Clears log window)\n -> wireframe; (Toggles visual layouts)\n -> reload; (Refreshes game)\n -> edit; (Enables webpage editor)');
+            } else if (cmdLower === 'clear') {
+                devLogs.length = 0;
+                updateConsoleView();
+            } else if (cmdLower === 'wireframe') {
+                document.querySelectorAll('*').forEach(el => el.style.outline = el.style.outline ? '' : '1px solid #00ffaa');
+                logToDebug('SYSTEM', 'Wireframe styles toggled.');
+            } else if (cmdLower === 'reload') {
+                window.location.reload();
+            } else if (cmdLower === 'edit') {
+                document.designMode = document.designMode === 'on' ? 'off' : 'on';
+                logToDebug('SYSTEM', `DesignMode is now: ${document.designMode}`);
+            } else {
+                // Wenn es kein Makro ist, als reines JS evaluieren
+                try {
+                    const result = window.eval(command);
+                    logToDebug('RESULT', result !== undefined ? JSON.stringify(result) : 'undefined');
+                } catch (err) {
+                    logToDebug('ERROR', `Eval Error: ${err.message}`);
+                }
             }
             cmdInput.value = '';
         }
