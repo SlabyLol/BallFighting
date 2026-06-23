@@ -525,14 +525,14 @@ function buildSwatches(cid,pid){
 }
 
 // ── Character select ─────────────────────────────────────────
-let pendingMode='pvp';
-function openCharSelect(mode){
-  pendingMode=mode;
-  const isCPU=mode==='pve';
-  $('pcard2-label').textContent=isCPU?'CPU':'Player 2';
+let pendingMode = 'pvp';
+function openCharSelect(mode) {
+  pendingMode = mode;
+  const isCPU = mode === 'pve';
+  $('pcard2-label').textContent= isCPU?'CPU':'Player 2';
   $('p2-card').style.opacity='1';$('p2-card').style.pointerEvents='all';
-  $('diff-row').style.display=isCPU?'flex':'none';
-  $('name2').placeholder=isCPU?'CPU Name':'Player 2';
+  $('diff-row').style.display= isCPU?'flex':'none';
+$('name2').value = isCPU ? 'CPU' : (PROFILES[1].name === 'CPU' ? 'Player 2' : PROFILES[1].name);
   $('name1').value=PROFILES[0].name;$('name2').value=PROFILES[1].name;
   buildSwatches('swatches1',0);
   buildSwatches('swatches2',1);
