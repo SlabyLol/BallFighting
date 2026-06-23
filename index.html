@@ -1061,40 +1061,49 @@ function syncSettingsUI(){
   sync('sopt-time',CFG.roundTime);sync('sopt-rounds',CFG.roundsToWin);sync('sopt-fx',CFG.fx);sync('sopt-items',CFG.items);
 }
 
-function wire(){
-  $('btn-pvp').onclick=()=>openCharSelect('pvp');
-  $('btn-pve').onclick=()=>openCharSelect('pve');
-  $('btn-char-back').onclick=()=>{showScreen('s-menu');startMenu();};
-  $('btn-char-play').onclick=()=>{
-    PROFILES[0].name=$('name1').value.trim()||'Player 1';
-    PROFILES[1].name=$('name2').value.trim()||(pendingMode==='pve'?'CPU':'Player 2');
+function wire() {
+  if ($('btn-pvp')) $('btn-pvp').onclick = () => openCharSelect('pvp');
+  if ($('btn-pve')) $('btn-pve').onclick = () => openCharSelect('pve');
+  
+  if ($('btn-char-back')) $('btn-char-back').onclick = () => {
+    showScreen('s-menu');
+    startMenu();
+  };
+  
+  if ($('btn-char-play')) $('btn-char-play').onclick = () => {
+    PROFILES[0].name = $('name1').value.trim() || 'Player 1';
+    PROFILES[1].name = $('name2').value.trim() || (pendingMode === 'pve' ? 'CPU' : 'Player 2');
     saveProfiles();
     startMatch(pendingMode);
   };
-  $('btn-howto').onclick=()=>showOv('ov-howto');
-  $('btn-settings').onclick=()=>{syncSettingsUI();showOv('ov-settings');};
-  $('btn-resume').onclick=()=>togglePause();
-  $('btn-quit-pause').onclick=()=>{stopGame();hideOv('ov-pause');showScreen('s-menu');startMenu();};
-  $('btn-nextround').onclick=()=>nextRound();
-  $('btn-quit-round').onclick=()=>{stopGame();hideOv('ov-roundend');showScreen('s-menu');startMenu();};
-  $('btn-playagain').onclick=()=>{hideOv('ov-gameover');startMatch(GS.mode);};
-  $('btn-quit-go').onclick=()=>{stopGame();hideOv('ov-gameover');showScreen('s-menu');startMenu();};
-  $('btn-howto-back').onclick=()=>hideOv('ov-howto');
-  $('btn-settings-save').onclick=()=>{cfgSave();hideOv('ov-settings');};
-  $('pause-btn').onclick=()=>togglePause();
-  window.addEventListener('resize',()=>{GS.running?arenaResize():mResize();});
-  // Füge das unten in deine wire() Funktion ein, falls noch nicht geschehen:
-if ($('diff-opts')) {
-  $('diff-opts').querySelectorAll('.diff-btn').forEach(btn => {
-    btn.onclick = () => {
-      CPU_DIFFICULTY = btn.getAttribute('data-d') || 'medium';
-      $('diff-opts').querySelectorAll('.diff-btn').forEach(b => {
-        b.classList.toggle('on', b === btn);
-      });
-      saveProfiles();
-    };
-  });
-}
+
+  if ($('btn-howto')) $('btn-howto').onclick = () => showOv('ov-howto');
+  if ($('btn-settings')) $('btn-settings').onclick = () => { syncSettingsUI(); showOv('ov-settings'); };
+  if ($('btn-resume')) $('btn-resume').onclick = () => togglePause();
+  
+  if ($('btn-quit-pause')) $('btn-quit-pause').onclick = () => { 
+    stopGame(); hideOv('ov-pause'); showScreen('s-menu'); startMenu(); 
+  };
+  
+  if ($('btn-nextround')) $('btn-nextround').onclick = () => nextRound();
+  
+  if ($('btn-quit-round')) $('btn-quit-round').onclick = () => { 
+    stopGame(); hideOv('ov-roundend'); showScreen('s-menu'); startMenu(); 
+  };
+  
+  if ($('btn-playagain')) $('btn-playagain').onclick = () => { 
+    hideOv('ov-gameover'); startMatch(GS.mode); 
+  };
+  
+  if ($('btn-quit-go')) $('btn-quit-go').onclick = () => { 
+    stopGame(); hideOv('ov-gameover'); showScreen('s-menu'); startMenu(); 
+  };
+  
+  if ($('btn-howto-back')) $('btn-howto-back').onclick = () => hideOv('ov-howto');
+  if ($('btn-settings-save')) $('btn-settings-save').onclick = () => { cfgSave(); hideOv('ov-settings'); };
+  if ($('pause-btn')) $('pause-btn').onclick = () => togglePause();
+  
+  window.addEventListener('resize', () => { GS.running ? arenaResize() : mResize(); });
 }
 
 document.addEventListener('DOMContentLoaded',()=>{
