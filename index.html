@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover"/>
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
 <title>BALL BRAWL</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
@@ -220,6 +224,7 @@ body.pve #tside-p1 .act-cluster{grid-template-columns:repeat(2,70px);grid-templa
 body.rot90  #app-root{transform:rotate(90deg)}
 body.rot180 #app-root{transform:rotate(180deg)}
 body.rot270 #app-root{transform:rotate(270deg)}
+/* At 90/270 we swap w/h via JS — see onResize() */
 </style>
 </head>
 <body>
@@ -468,7 +473,11 @@ function hideOv(id){$(id).classList.remove('active');}
 const mCvs=$('menu-canvas'),mCtx=mCvs.getContext('2d');
 let mPts=[],mRaf=null;
 const MC=['#3b9eff','#ff3b5c','#f5c842','#80ddff','#ff80aa','#2ecc71','#e056fd'];
-function mResize(){mCvs.width=innerWidth;mCvs.height=innerHeight;}
+function mResize(){
+  const sideways=(rotDeg===90||rotDeg===270);
+  mCvs.width=sideways?window.innerHeight:window.innerWidth;
+  mCvs.height=sideways?window.innerWidth:window.innerHeight;
+}
 function mSpawn(){return{x:rnd(0,mCvs.width),y:rnd(0,mCvs.height),vx:rnd(-.5,.5),vy:rnd(-.5,.5),r:rnd(1,3.5),col:MC[0|rnd(0,MC.length)],a:rnd(.15,.5),life:rnd(160,420),age:0};}
 function mAnim(){mRaf=requestAnimationFrame(mAnim);mCtx.clearRect(0,0,mCvs.width,mCvs.height);mPts=mPts.filter(p=>{p.x+=p.vx;p.y+=p.vy;p.age++;const al=p.a*(1-(p.age/p.life)**2);mCtx.globalAlpha=al;mCtx.fillStyle=p.col;mCtx.beginPath();mCtx.arc(p.x,p.y,p.r,0,Math.PI*2);mCtx.fill();return p.age<p.life;});mCtx.globalAlpha=1;while(mPts.length<80)mPts.push(mSpawn());}
 function startMenu(){mResize();if(mRaf)cancelAnimationFrame(mRaf);mAnim();}
@@ -793,7 +802,12 @@ class AI{
 let CVS,CTX,W,H,FY,camShake=0,stars=[],frame=0,platPx=[];
 const PLATS=[{xF:.18,yF:.62,wF:.16},{xF:.66,yF:.62,wF:.16},{xF:.41,yF:.42,wF:.18}];
 function arenaInit(){CVS=$('game-canvas');CTX=CVS.getContext('2d');arenaResize();stars=[];for(let i=0;i<110;i++)stars.push({x:Math.random(),y:Math.random()*.75,r:rnd(.3,1.8),a:rnd(.15,.65),tw:rnd(0,Math.PI*2),sp:rnd(.005,.025)});}
-function arenaResize(){W=CVS.width=innerWidth;H=CVS.height=innerHeight;FY=H-H*.17;platPx=PLATS.map(p=>({x:W*p.xF,y:H*p.yF,w:W*p.wF,h:14}));}
+function arenaResize(){
+  const sideways=(rotDeg===90||rotDeg===270);
+  W=CVS.width=sideways?window.innerHeight:window.innerWidth;
+  H=CVS.height=sideways?window.innerWidth:window.innerHeight;
+  FY=H-H*.17;platPx=PLATS.map(p=>({x:W*p.xF,y:H*p.yF,w:W*p.wF,h:14}));
+}
 function hexToRgb(h){const r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16);return`${r},${g},${b}`;}
 function arenaDraw(b1,b2,now){
   frame++;let sx=0,sy=0;
@@ -985,47 +999,92 @@ function wire(){
   $('btn-howto-back').onclick=()=>hideOv('ov-howto');
   $('btn-settings-save').onclick=()=>{cfgSave();hideOv('ov-settings');};
   $('pause-btn').onclick=()=>togglePause();
-  window.addEventListener('resize',()=>{GS.running?arenaResize():mResize();});
 }
 
 /* ══════════ ROTATE + RESPONSIVE SCALE ══════════ */
 let rotDeg=0;
 const ROT_CLASSES=['','rot90','rot180','rot270'];
+
+function onResize(){
+  const vw=window.innerWidth, vh=window.innerHeight;
+  const sideways=(rotDeg===90||rotDeg===270);
+  // Effective gameplay area — when sideways, gameplay w/h are swapped
+  const gw=sideways?vh:vw;
+  const gh=sideways?vw:vh;
+
+  // At 90/270 deg: #app-root must be sized to the ROTATED dimensions
+  // so it fills the screen correctly after the CSS transform is applied.
+  // A 90deg rotated element with w=vw,h=vh will overflow. We need w=vh,h=vw.
+  const root=$('app-root');
+  if(sideways){
+    // Size to swapped dims, then offset to re-center
+    root.style.width=vh+'px';
+    root.style.height=vw+'px';
+    root.style.left=((vw-vh)/2)+'px';
+    root.style.top=((vh-vw)/2)+'px';
+    root.style.right='';root.style.bottom='';root.style.inset='';
+  } else {
+    root.style.width='';root.style.height='';
+    root.style.left='';root.style.top='';root.style.right='';root.style.bottom='';
+    root.style.inset='0';
+  }
+
+  // Menu canvas
+  mResize();
+
+  // Arena canvas — use effective gameplay dimensions
+  if(typeof CVS!=='undefined'&&CVS){
+    arenaResize();
+  }
+
+  // Touch UI — scale to gameplay height
+  const touchH=Math.max(140,Math.min(210,gh*0.27));
+  const tui=$('touch-ui');
+  if(tui)tui.style.height=touchH+'px';
+
+  // Joystick size based on gameplay width
+  const joySize=Math.max(80,Math.min(130,gw*0.22));
+  document.querySelectorAll('.joystick-wrap').forEach(j=>{
+    j.style.width=joySize+'px';j.style.height=joySize+'px';});
+  const knobSize=Math.max(36,Math.min(58,joySize*0.44));
+  document.querySelectorAll('.joy-knob').forEach(k=>{
+    k.style.width=knobSize+'px';k.style.height=knobSize+'px';});
+
+  // Action buttons
+  const btnSize=Math.max(46,Math.min(72,gw*0.12));
+  document.querySelectorAll('.act-cluster').forEach(cl=>{
+    cl.style.gridTemplateColumns=`repeat(2,${btnSize}px)`;
+    cl.style.gridTemplateRows=`repeat(2,${btnSize}px)`;});
+
+  // CSS scale var for font/UI sizes
+  const scale=Math.min(Math.max(Math.min(gw,gh)/375,0.55),1.6);
+  document.documentElement.style.setProperty('--ui-scale',String(scale));
+}
+
 function applyRot(){
   document.body.classList.remove('rot90','rot180','rot270');
   if(rotDeg!==0)document.body.classList.add(ROT_CLASSES[rotDeg/90]);
-  try{localStorage.setItem('bb_rot',rotDeg);}catch{}
-}
-function initRotate(){
-  try{rotDeg=parseInt(localStorage.getItem('bb_rot')||'0');if(![0,90,180,270].includes(rotDeg))rotDeg=0;}catch{}
-  applyRot();
-  $('rotate-btn').onclick=()=>{rotDeg=(rotDeg+90)%360;applyRot();};
+
+  // Recalculate immediately AND after CSS transition finishes
+  onResize();
+  setTimeout(onResize,370);
 }
 
-/* Responsive: scale font-size and UI to viewport */
-function applyResponsiveScale(){
-  // Base design at 375px wide. Scale up on larger screens, down on tiny ones.
-  const base=375;
-  const scale=Math.min(Math.max(Math.min(innerWidth,innerHeight)/base,0.55),1.6);
-  document.documentElement.style.setProperty('--ui-scale',scale);
-  // Touch controls height responsive
-  const touchH=Math.max(140,Math.min(210,innerHeight*0.27));
-  const tui=$('touch-ui');
-  if(tui)tui.style.height=touchH+'px';
-  // Joy size
-  const joySize=Math.max(80,Math.min(130,innerWidth*0.22));
-  document.querySelectorAll('.joystick-wrap').forEach(j=>{j.style.width=joySize+'px';j.style.height=joySize+'px';});
-  const knobSize=Math.max(36,Math.min(58,joySize*0.44));
-  document.querySelectorAll('.joy-knob').forEach(k=>{k.style.width=knobSize+'px';k.style.height=knobSize+'px';});
-  // Action button size
-  const btnSize=Math.max(46,Math.min(72,innerWidth*0.12));
-  document.querySelectorAll('.act-cluster').forEach(cl=>{cl.style.gridTemplateColumns=`repeat(2,${btnSize}px)`;cl.style.gridTemplateRows=`repeat(2,${btnSize}px)`;});
+function initRotate(){
+
+  // Apply on boot without waiting
+  document.body.classList.remove('rot90','rot180','rot270');
+  if(rotDeg!==0)document.body.classList.add(ROT_CLASSES[rotDeg/90]);
+  $('rotate-btn').onclick=()=>{rotDeg=(rotDeg+90)%360;applyRot();};
+  onResize();
 }
-window.addEventListener('resize',applyResponsiveScale);
-window.addEventListener('orientationchange',()=>setTimeout(applyResponsiveScale,200));
+
+window.addEventListener('resize',onResize);
+window.addEventListener('orientationchange',()=>setTimeout(onResize,250));
+
 document.addEventListener('DOMContentLoaded',()=>{
   cfgLoad();loadProfiles();syncSettingsUI();wire();bindSettings();setupTouch();startMenu();
-  initRotate();applyResponsiveScale();
+  initRotate();onResize();
 });
 </script>
 </div><!-- #app-root -->
