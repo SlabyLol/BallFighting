@@ -1,16 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-<link rel="manifest" href="/site.webmanifest">
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover"/>
 <title>BALL BRAWL</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
 html,body{width:100%;height:100%;overflow:hidden;background:#07070f;font-family:'Segoe UI',system-ui,sans-serif;color:#eaeaf4;touch-action:none}
+body.charselect{overflow-y:auto;touch-action:pan-y}
 button{cursor:pointer;border:none;background:none;font-family:inherit;color:inherit}
 input{font-family:inherit;user-select:text;-webkit-user-select:text}
 :root{--p1:#3b9eff;--p2:#ff3b5c;--gold:#f5c842;--bg:#07070f;--panel:#10102a;--border:#2a2a55;--mid:#7070a0}
@@ -20,8 +17,9 @@ input{font-family:inherit;user-select:text;-webkit-user-select:text}
 .screen.active{display:block}
 /* special cases that need flex centering */
 #s-menu.active,#ov-pause.active,#ov-roundend.active,#ov-gameover.active,#ov-howto.active,#ov-settings.active{display:flex;align-items:center;justify-content:center;flex-direction:column}
-/* s-char: scrollable page */
-#s-char.active{display:block;overflow-y:auto;-webkit-overflow-scrolling:touch}
+/* s-char: NOT fixed — it's a normal scrollable page that replaces body scroll */
+#s-char{position:fixed;inset:0;display:none;overflow-y:scroll;overflow-x:hidden;-webkit-overflow-scrolling:touch;background:var(--bg)}
+#s-char.active{display:block}
 /* s-game: just show canvas */
 #s-game.active{display:block}
 
@@ -46,7 +44,6 @@ input{font-family:inherit;user-select:text;-webkit-user-select:text}
 .mbtn.prim .mbtn-sub{color:rgba(7,7,15,.6)}
 
 /* CHARACTER SELECT */
-#s-char{background:var(--bg)}
 .char-wrap{min-height:100%;display:flex;align-items:flex-start;justify-content:center;padding:20px clamp(14px,4vw,40px)}
 .char-screen{max-width:740px;width:100%;display:flex;flex-direction:column;gap:18px;padding-bottom:30px}
 .char-screen h2{font-size:1.6rem;font-weight:900;letter-spacing:.08em;text-align:center;text-transform:uppercase;padding-top:10px}
@@ -211,12 +208,24 @@ body.pve #tside-p1 .act-cluster{grid-template-columns:repeat(2,70px);grid-templa
 .abtn .as{font-size:.54rem;font-weight:500;opacity:.6;margin-top:1px}
 .abtn:active,.abtn.held{transform:scale(.88);box-shadow:0 1px 5px rgba(0,0,0,.4)}
 
-::-webkit-scrollbar{width:5px}
-::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+/* ── ROTATE BUTTON ── */
+#rotate-btn{position:fixed;top:10px;right:10px;z-index:200;
+  width:40px;height:40px;border-radius:50%;
+  background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.25);
+  font-size:1.2rem;color:rgba(255,255,255,.7);display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:all .2s;box-shadow:0 2px 12px rgba(0,0,0,.4)}
+#rotate-btn:hover,#rotate-btn:active{background:rgba(255,255,255,.22);color:#fff}
+/* ── ROTATION WRAPPER ── */
+#app-root{position:fixed;inset:0;width:100%;height:100%;transition:transform .35s cubic-bezier(.4,0,.2,1);transform-origin:center center;overflow:hidden}
+body.rot90  #app-root{transform:rotate(90deg)}
+body.rot180 #app-root{transform:rotate(180deg)}
+body.rot270 #app-root{transform:rotate(270deg)}
 </style>
 </head>
 <body>
-<script src="debugDev.js"></script>
+<div id="app-root">
+<button id="rotate-btn" title="Rotate screen">⟳</button>
+
 <!-- MENU -->
 <div id="s-menu" class="screen active">
   <canvas id="menu-canvas"></canvas>
@@ -446,12 +455,11 @@ let CPU_DIFF='medium';
 // All overlays = screen + overlay class
 const OVERLAYS=['ov-pause','ov-roundend','ov-gameover','ov-howto','ov-settings'];
 function showScreen(id){
-  // Hide all non-overlay screens
   ['s-menu','s-char','s-game'].forEach(s=>$(s).classList.remove('active'));
-  // Hide all overlays
   OVERLAYS.forEach(o=>$(o).classList.remove('active'));
-  // Show target
   $(id).classList.add('active');
+  // For char select, scroll back to top
+  if(id==='s-char'){const el=$(id);el.scrollTop=0;}
 }
 function showOv(id){$(id).classList.add('active');}
 function hideOv(id){$(id).classList.remove('active');}
@@ -980,10 +988,46 @@ function wire(){
   window.addEventListener('resize',()=>{GS.running?arenaResize():mResize();});
 }
 
-/* ══════════ BOOT ══════════ */
+/* ══════════ ROTATE + RESPONSIVE SCALE ══════════ */
+let rotDeg=0;
+const ROT_CLASSES=['','rot90','rot180','rot270'];
+function applyRot(){
+  document.body.classList.remove('rot90','rot180','rot270');
+  if(rotDeg!==0)document.body.classList.add(ROT_CLASSES[rotDeg/90]);
+  try{localStorage.setItem('bb_rot',rotDeg);}catch{}
+}
+function initRotate(){
+  try{rotDeg=parseInt(localStorage.getItem('bb_rot')||'0');if(![0,90,180,270].includes(rotDeg))rotDeg=0;}catch{}
+  applyRot();
+  $('rotate-btn').onclick=()=>{rotDeg=(rotDeg+90)%360;applyRot();};
+}
+
+/* Responsive: scale font-size and UI to viewport */
+function applyResponsiveScale(){
+  // Base design at 375px wide. Scale up on larger screens, down on tiny ones.
+  const base=375;
+  const scale=Math.min(Math.max(Math.min(innerWidth,innerHeight)/base,0.55),1.6);
+  document.documentElement.style.setProperty('--ui-scale',scale);
+  // Touch controls height responsive
+  const touchH=Math.max(140,Math.min(210,innerHeight*0.27));
+  const tui=$('touch-ui');
+  if(tui)tui.style.height=touchH+'px';
+  // Joy size
+  const joySize=Math.max(80,Math.min(130,innerWidth*0.22));
+  document.querySelectorAll('.joystick-wrap').forEach(j=>{j.style.width=joySize+'px';j.style.height=joySize+'px';});
+  const knobSize=Math.max(36,Math.min(58,joySize*0.44));
+  document.querySelectorAll('.joy-knob').forEach(k=>{k.style.width=knobSize+'px';k.style.height=knobSize+'px';});
+  // Action button size
+  const btnSize=Math.max(46,Math.min(72,innerWidth*0.12));
+  document.querySelectorAll('.act-cluster').forEach(cl=>{cl.style.gridTemplateColumns=`repeat(2,${btnSize}px)`;cl.style.gridTemplateRows=`repeat(2,${btnSize}px)`;});
+}
+window.addEventListener('resize',applyResponsiveScale);
+window.addEventListener('orientationchange',()=>setTimeout(applyResponsiveScale,200));
 document.addEventListener('DOMContentLoaded',()=>{
   cfgLoad();loadProfiles();syncSettingsUI();wire();bindSettings();setupTouch();startMenu();
+  initRotate();applyResponsiveScale();
 });
 </script>
+</div><!-- #app-root -->
 </body>
 </html>
